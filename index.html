@@ -1,0 +1,461 @@
+<title>JST Cable Mapper</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#EEF2F0; --panel:#FFFFFF; --panel-2:#F6F8F7; --ink:#15201B; --muted:#5A6962; --line:#D3DCD7;
+  --accent:#1D5BBF; --accent-soft:#E3ECFA;
+  --ok:#1C7F47; --ok-soft:#DDF1E5; --warn:#A5680F; --warn-soft:#FBEFD9;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0E1412; --panel:#161F1B; --panel-2:#1B2621; --ink:#E4ECE8; --muted:#94A69D; --line:#2A3832;
+    --accent:#77A6F2; --accent-soft:#1B2A42;
+    --ok:#5FCB8C; --ok-soft:#15301F; --warn:#E6AB4E; --warn-soft:#352812;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0E1412; --panel:#161F1B; --panel-2:#1B2621; --ink:#E4ECE8; --muted:#94A69D; --line:#2A3832;
+  --accent:#77A6F2; --accent-soft:#1B2A42;
+  --ok:#5FCB8C; --ok-soft:#15301F; --warn:#E6AB4E; --warn-soft:#352812;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg)}
+body{margin:0;color:var(--ink);font:13px/1.45 var(--sans);padding-inline:16px;padding-block:12px 16px}
+.wrap{max-width:1400px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+button{font:500 12px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:5px 10px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.col{display:flex;flex-direction:column;gap:8px;min-width:0}
+.lbl{font:600 10px var(--sans);text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+select,input[type=text],input[type=number]{font:13px var(--sans);color:var(--ink);background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:5px 7px;width:100%;min-width:0}
+.field{display:flex;flex-direction:column;gap:3px;min-width:0}
+
+/* top bar: title + shared series / pin-out */
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 14px;padding:10px 12px}
+h1{font:700 20px/1 var(--cond);letter-spacing:.01em;margin:0 6px 4px 0;white-space:nowrap}
+.top .f-type{width:190px}
+.stepper{display:flex;gap:3px;width:118px}
+.stepper input{text-align:center;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.stepper button{padding:4px 9px;flex:none}
+.top .f-sig{flex:1;min-width:220px}
+#sig{font-family:var(--mono)}
+
+.seg{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--panel-2)}
+.seg label{flex:1;text-align:center;padding:4px 6px;font-size:12px;cursor:pointer;border-left:1px solid var(--line);user-select:none;white-space:nowrap}
+.seg label:first-child{border-left:0}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label:has(input:checked){background:var(--accent);color:#fff}
+.seg label:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:-2px}
+.hint{font-size:11px;color:var(--muted);margin:0;line-height:1.3}
+
+/* connector cards */
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.side{padding:10px 12px;display:grid;grid-template-columns:minmax(0,1fr) minmax(150px,44%);gap:8px 12px;align-items:start}
+.side-h{grid-column:1/-1;display:flex;align-items:baseline;gap:8px;min-width:0}
+.tag{font:700 13px var(--cond);width:22px;height:22px;border-radius:5px;display:grid;place-items:center;background:#1F5E46;color:#F1F1E6;flex:none;align-self:center}
+.side-h h2{font:600 14px/1.2 var(--cond);margin:0;white-space:nowrap}
+.part{font:11px var(--mono);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .part b{font-weight:500;color:var(--ink)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.preview{background:#E4E8E6;border-radius:8px;overflow:hidden;padding:4px 6px;align-self:stretch;display:grid;place-items:center}
+.preview svg{display:block;width:100%;height:auto;max-height:150px}
+@media (max-width:900px){.pair{grid-template-columns:1fr}}
+@media (max-width:480px){.side{grid-template-columns:1fr}}
+
+/* result */
+.verdict{padding:12px;display:grid;grid-template-columns:minmax(300px,1fr) 1.9fr;gap:14px;align-items:start}
+@media (max-width:900px){.verdict{grid-template-columns:1fr}}
+.pill{align-self:flex-start;font:600 11px var(--sans);text-transform:uppercase;letter-spacing:.06em;padding:2px 8px;border-radius:999px;background:var(--ok-soft);color:var(--ok)}
+.verdict h3{font:700 19px/1.15 var(--cond);margin:0;text-wrap:balance}
+.verdict ul{margin:0;padding-left:16px;display:flex;flex-direction:column;gap:3px;font-size:12.5px}
+.photo{background:#51677A;border-radius:8px;overflow:hidden;position:relative}
+.copy-img{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.92);color:#15201B;border-color:transparent;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.copy-img:hover{background:#fff}
+.shot{position:fixed;inset:0;background:rgba(10,16,20,.72);display:grid;place-items:center;padding:16px;z-index:10}
+.shot figure{margin:0;background:var(--panel);border-radius:10px;padding:12px;max-width:min(1100px,100%);display:flex;flex-direction:column;gap:8px}
+.shot img{max-width:100%;max-height:70vh;border-radius:6px;display:block}
+.shot figcaption{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;color:var(--muted)}
+.photo svg{display:block;width:100%;height:auto;max-height:max(260px,calc(100vh - 430px))}
+.search{display:flex;flex-direction:column;gap:4px}
+.q{display:flex;gap:6px;align-items:center;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:3px 3px 3px 8px}
+.q code{font:11.5px var(--mono);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;user-select:all}
+.q button{padding:3px 8px;flex:none}
+</style>
+
+<div class="wrap">
+  <section class="card top">
+    <h1>JST Cable Mapper</h1>
+    <div class="field f-type"><label class="lbl" for="type">Тип</label><select id="type"></select></div>
+    <div class="field"><label class="lbl" for="n">Пінів</label>
+      <div class="stepper"><button type="button" data-step="-1" aria-label="Менше пінів">−</button>
+      <input type="number" id="n"><button type="button" data-step="1" aria-label="Більше пінів">+</button></div></div>
+    <div class="field f-sig"><label class="lbl" for="sig">Сигнали по порядку, через кому (однакові на обох кінцях)</label>
+      <input type="text" id="sig" spellcheck="false" autocomplete="off"></div>
+  </section>
+
+  <div class="pair">
+    <section class="card side" id="sideA"></section>
+    <section class="card side" id="sideB"></section>
+  </div>
+
+  <section class="card verdict">
+    <div class="col">
+      <span class="pill" id="pill"></span>
+      <p class="hint" id="pillNote" style="font-size:12px"></p>
+      <div class="search"><span class="lbl">Шукати на AliExpress</span><div id="queries" class="search"></div></div>
+    </div>
+    <div class="photo"><div id="photo"></div><button type="button" class="copy-img" id="copyImg">Копіювати зображення</button></div>
+  </section>
+</div>
+
+<script>
+const p2 = n => String(n).padStart(2,'0');
+/* dimensions in mm: w0 = housing width minus (n-1)*pitch, len = housing length along the wire, od = wire outer diameter, hh = header height */
+const TYPES = {
+  SH:{label:'JST SH 1.0', q:'SH1.0', pitch:1.0, min:2, max:20, w0:3.0, len:4.3, od:0.85, hh:2.9, color:'#F2EFE6',
+      housing:n=>`SHR-${p2(n)}V-S-B`, variants:['SMD'],
+      parts:{SMD:{V:n=>`BM${p2(n)}B-SRSS-TB`, H:n=>`SM${p2(n)}B-SRSS-TB`}}},
+  PB:{label:'JST 1.25 (PicoBlade)', q:'1.25mm', pitch:1.25, min:2, max:15, w0:3.2, len:6.0, od:0.9, hh:3.4, color:'#F1EEE4',
+      housing:n=>`51021-${p2(n)}00`, variants:['SMD','THT'],
+      parts:{SMD:{V:n=>`Molex 53398-${p2(n)}71`, H:n=>`Molex 53261-${p2(n)}71`}, THT:{V:n=>`Molex 53047-${p2(n)}10`, H:n=>`Molex 53048-${p2(n)}10`}}},
+  GH:{label:'JST GH 1.25', q:'GH1.25', pitch:1.25, min:2, max:15, w0:3.25, len:5.2, od:1.0, hh:4.25, color:'#EDE2C4',
+      housing:n=>`GHR-${p2(n)}V-S`, variants:['SMD'],
+      parts:{SMD:{V:n=>`BM${p2(n)}B-GHS-TBT`, H:n=>`SM${p2(n)}B-GHS-TB`}}},
+  XH:{label:'JST XH 2.54', q:'XH2.54', pitch:2.5, min:2, max:20, w0:4.9, len:9.8, od:1.4, hh:7.0, color:'#F3F0E8',
+      housing:n=>`XHP-${n}`, variants:['THT','SMD'],
+      parts:{THT:{V:n=>`B${n}B-XH-A`, H:n=>`S${n}B-XH-A`}, SMD:{V:n=>`B${n}B-XH-SM4-TB`, H:n=>`S${n}B-XH-SM4-TB · BX-XH2.54-${n}PWT`}}},
+};
+const DEFAULT = {type:'SH', n:4, names:['GND','3V3','SDA','SCL'], wires:'black',
+  A:{mount:'H', dir:'L', variant:'SMD', part:''}, B:{mount:'V', dir:'L', variant:'SMD', part:''}};
+const KEY = 'jst-cable-mapper-v3';
+let state;
+try{ state = JSON.parse(localStorage.getItem(KEY)) }catch(e){}
+if(!state || !state.A || !TYPES[state.type]) state = structuredClone(DEFAULT);
+// the mounting variant must exist for the selected series
+const fixVariant = s => { const v = TYPES[state.type].variants; if(!v.includes(state[s].variant)) state[s].variant = v[0]; };
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)) }catch(e){} }
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sig = i => (state.names[i]||'').trim() || `#${i+1}`;
+
+/* ---------- part number parser ----------
+   Understands JST / Molex originals and the common Chinese clone naming, e.g.
+   BX-XH2.54-5PWT (XH, 5 pins, horizontal SMD), XH2.54-4A (vertical THT), XH2.54-4AW (right-angle THT),
+   SH1.0-4PLT (vertical SMD), GH1.25-6PWT, MX1.25-4PWT, A1251WV-S-4P. */
+function parsePart(raw){
+  const s = String(raw||'').toUpperCase().replace(/\s+/g,'');
+  if(!s) return null;
+  let m;
+  if(/^(SHR|GHR|XHP|ZHR|PHR)-|^51021-/.test(s)) return {error:"Це корпус на кабель, а не гніздо на платі."};
+  // JST originals
+  if((m = s.match(/(?:^|[^A-Z])([SB])M?(\d{1,2})B-XH-(A|SM4-TB)/)) || (m = s.match(/^([SB])(\d{1,2})B-XH-(A|SM4-TB)/)))
+    return {type:'XH', n:+m[2], mount:m[1]==='S'?'H':'V', variant:m[3]==='A'?'THT':'SMD'};
+  if((m = s.match(/(SM|BM)(\d{2})B-SRSS/))) return {type:'SH', n:+m[2], mount:m[1]==='SM'?'H':'V', variant:'SMD'};
+  if((m = s.match(/(SM|BM)(\d{2})B-GHS/))) return {type:'GH', n:+m[2], mount:m[1]==='SM'?'H':'V', variant:'SMD'};
+  // Molex PicoBlade
+  if((m = s.match(/53(047|048|261|398)-?(\d{2})/)))
+    return {type:'PB', n:+m[2], mount:(m[1]==='047'||m[1]==='398')?'V':'H', variant:(m[1]==='047'||m[1]==='048')?'THT':'SMD'};
+  // Joint Tech style A1251WV-S-4P / A1251WR-S-4P
+  if((m = s.match(/A1251W?([VR])-?S?-?(\d{1,2})P/))) return {type:'PB', n:+m[2], mount:m[1]==='V'?'V':'H', variant:'SMD'};
+  // generic clones: series token, pin count, style suffix
+  const series = [[/(^|[^A-Z])XH(2\.54|2\.5)?/, 'XH'], [/(^|[^A-Z])SH(1\.0|1)?(?![0-9])/, 'SH'], [/(^|[^A-Z])GH(1\.25)?/, 'GH'], [/(^|[^A-Z])(MX|PICOBLADE|JST)?1\.25(?!\d)/, 'PB']];
+  for(const [re, type] of series){
+    const sm = s.match(re); if(!sm) continue;
+    const rest = s.slice(sm.index + sm[0].length);
+    const pm = rest.match(/(\d{1,2})(P|PIN|A)?([A-Z]*)/);
+    if(!pm) return {error:"Не бачу кількості пінів у партномері."};
+    const n = +pm[1], suf = (pm[2]==='A' ? 'A' : '') + (pm[3]||'');
+    let mount, variant;
+    if(/WT|SMT-?W|RA-?SMD|WS/.test(suf)) { mount='H'; variant='SMD'; }        // 卧贴: lying SMD
+    else if(/LT|SMT/.test(suf)) { mount='V'; variant='SMD'; }                  // 立贴: standing SMD
+    else if(/AW|W|RA|R/.test(suf)) { mount='H'; variant='THT'; }               // 弯针: right-angle pins
+    else { mount='V'; variant='THT'; }                                          // 直针: straight pins
+    if(!TYPES[type].variants.includes(variant)) variant = TYPES[type].variants[0];
+    return {type, n, mount, variant};
+  }
+  if(/(^|[^A-Z])(PH|ZH|EH|VH|PA|HY)\d/.test(s)) return {error:"Ця серія (PH/ZH/EH/VH…) поки не підтримується."};
+  return {error:"Не впізнаю партномер. Приклад: BX-XH2.54-5PWT, SM04B-GHS-TB, B5B-XH-A."};
+}
+const descr = p => `${TYPES[p.type].label}, ${p.n} пін., ${p.mount==='V'?'вертикальний':'горизонтальний'} ${p.variant}`;
+
+/* ---------- global controls ---------- */
+const typeSel = document.getElementById('type');
+typeSel.innerHTML = Object.entries(TYPES).map(([k,t])=>`<option value="${k}">${t.label}</option>`).join('');
+typeSel.addEventListener('change', () => { state.type = typeSel.value; fixVariant('A'); fixVariant('B'); clampN(); rebuildPins(); update(); });
+const nIn = document.getElementById('n');
+nIn.addEventListener('change', () => { state.n = parseInt(nIn.value)||2; clampN(); rebuildPins(); update(); });
+document.querySelectorAll('[data-step]').forEach(b => b.addEventListener('click', () => { state.n += +b.dataset.step; clampN(); rebuildPins(); update(); }));
+// signals: one comma-separated field; the count follows the list while typing
+const sigEl = document.getElementById('sig');
+sigEl.addEventListener('input', () => {
+  const parts = sigEl.value.split(/[,;\t\n]+/).map(x => x.trim());
+  if(parts.length && parts[parts.length-1] === '') parts.pop();
+  state.names = parts;
+  if(parts.length >= 2) state.n = parts.length;
+  clampN(); update();
+});
+sigEl.addEventListener('change', rebuildPins);
+function clampN(){
+  const t = TYPES[state.type];
+  state.n = Math.max(t.min, Math.min(t.max, state.n|0));
+  while(state.names.length < state.n) state.names.push('');
+}
+function rebuildPins(){
+  if(document.activeElement === sigEl) return;           // don't fight the cursor while typing
+  sigEl.value = Array.from({length:state.n}, (_,i) => state.names[i]||'').join(', ');
+}
+
+/* ---------- side cards ---------- */
+function buildSide(s){
+  const root = document.getElementById('side'+s);
+  root.innerHTML = `
+    <div class="side-h"><div class="tag">${s}</div><h2>${s==='A'?"Плата A":"Плата B"}</h2><span id="part${s}" class="part"></span></div>
+    <div class="col">
+      <div class="col" style="gap:8px">
+        <div class="field"><span class="lbl">Монтаж</span>
+          <div class="seg" role="radiogroup">
+            <label title="Вертикальний"><input type="radio" name="mount${s}" value="V">Верт.</label>
+            <label title="Горизонтальний"><input type="radio" name="mount${s}" value="H">Гориз.</label></div></div>
+        <div class="field" id="varF${s}"><span class="lbl">Виконання</span>
+          <div class="seg" role="radiogroup" id="var${s}"></div></div>
+      </div>
+      <div class="field"><span class="lbl">Напрямок розпіновки</span>
+        <div class="seg" role="radiogroup">
+          <label><input type="radio" name="dir${s}" value="L"><span id="dirL${s}"></span></label>
+          <label><input type="radio" name="dir${s}" value="R"><span id="dirR${s}"></span></label></div>
+        <p class="hint" id="how${s}"></p></div>
+    </div>
+    <div class="preview" id="prev${s}"></div>`;
+  root.querySelector('#var'+s).addEventListener('change', e => { if(e.target.name==='var'+s){ state[s].variant = e.target.value; update(); } });
+  root.querySelectorAll(`input[name=mount${s}]`).forEach(r => r.addEventListener('change', () => { state[s].mount = r.value; update(); }));
+  root.querySelectorAll(`input[name=dir${s}]`).forEach(r => r.addEventListener('change', () => { state[s].dir = r.value; update(); }));
+}
+function syncSide(s){
+  const st = state[s], t = TYPES[state.type], first = esc(sig(0));
+  document.querySelectorAll(`input[name=mount${s}]`).forEach(r => r.checked = r.value===st.mount);
+  document.querySelectorAll(`input[name=dir${s}]`).forEach(r => r.checked = r.value===st.dir);
+  document.getElementById('dirL'+s).innerHTML = `${first} зліва`;
+  document.getElementById('dirR'+s).innerHTML = `${first} справа`;
+  document.getElementById('how'+s).textContent = st.mount==='H'
+    ? "Дивлячись в отвір, плата знизу (як на картинці)."
+    : "Дивлячись згори, замком до себе.";
+  const vs = t.variants;
+  document.getElementById('varF'+s).hidden = vs.length < 2;
+  document.getElementById('var'+s).innerHTML = vs.map(v =>
+    `<label title="${v==='SMD'?'поверхневий монтаж':'монтаж в отвори'}"><input type="radio" name="var${s}" value="${v}"${v===st.variant?' checked':''}>${v}</label>`).join('');
+  document.getElementById('part'+s).innerHTML = `гніздо <b>${t.parts[st.variant][st.mount](state.n)}</b>`;
+  document.getElementById('prev'+s).innerHTML = drawHeader(s);
+}
+
+/* ---------- the physics ----------
+   plugSide: where signal #1 is when you look straight at the plug's mating face with its latch up.
+   Horizontal header seen from the front = looking the same way the plug points -> mirrored.
+   Vertical header seen from above with the latch wall toward you -> not mirrored. */
+// Horizontal headers are shown from the front with the board below. In most series the latch is on top there;
+// in PicoBlade SMD (53261) it sits at the bottom, next to the board, which mirrors left/right once more.
+const hLockTop = s => !(state.type === 'PB' && state[s].variant === 'SMD');
+const plugSide = s => {
+  const st = state[s];
+  if(st.mount !== 'H') return st.dir;
+  return hLockTop(s) ? (st.dir==='L'?'R':'L') : st.dir;
+};
+function analyse(){
+  const pA = plugSide('A'), pB = plugSide('B');
+  const same = pA !== pB;          // both latches on the same face when laid flat
+  const topFirst = pA === 'L';     // left plug latch-up: signal #1 is on the top row when pA = L
+  return {same, topFirst};
+}
+
+/* ---------- rendered 3D sprites (tools/render.mjs) ---------- */
+const SPR = /*SPRITES*/{"plug-SH-up":{"W":1047,"H":7250,"ppm":60,"cells":[{"n":2,"w":349,"h":455,"rear":[[325,145.4],[325,205.3]],"mate":[25.5,175.3],"x":0,"y":0},{"n":3,"w":349,"h":515,"rear":[[325,145.4],[325,205.3],[325,265.3]],"mate":[25.5,205.3],"x":0,"y":455},{"n":4,"w":349,"h":575,"rear":[[325,145.4],[325,205.4],[325,265.3],[325,325.3]],"mate":[25.5,235.3],"x":0,"y":970},{"n":5,"w":349,"h":635,"rear":[[325,145.4],[325,205.4],[325,265.3],[325,325.3],[325,385.3]],"mate":[25.5,265.3],"x":0,"y":1545},{"n":6,"w":349,"h":695,"rear":[[325,145.4],[325,205.4],[325,265.3],[325,325.3],[325,385.3],[325,445.2]],"mate":[25.5,295.3],"x":0,"y":2180},{"n":7,"w":349,"h":755,"rear":[[325,145.4],[325,205.4],[325,265.4],[325,325.3],[325,385.3],[325,445.3],[325,505.2]],"mate":[25.5,325.3],"x":0,"y":2875},{"n":8,"w":349,"h":815,"rear":[[325,145.4],[325,205.4],[325,265.4],[325,325.3],[325,385.3],[325,445.3],[325,505.3],[325,565.2]],"mate":[25.5,355.3],"x":0,"y":3630},{"n":9,"w":349,"h":875,"rear":[[325,145.4],[325,205.4],[325,265.4],[325,325.4],[325,385.3],[325,445.3],[325,505.3],[325,565.2],[325,625.2]],"mate":[25.5,385.3],"x":0,"y":4445},{"n":10,"w":349,"h":935,"rear":[[325,145.4],[325,205.4],[325,265.4],[325,325.4],[325,385.3],[325,445.3],[325,505.3],[325,565.3],[325,625.2],[325,685.2]],"mate":[25.5,415.3],"x":0,"y":5320},{"n":11,"w":349,"h":995,"rear":[[325,145.4],[325,205.4],[325,265.4],[325,325.4],[325,385.3],[325,445.3],[325,505.3],[325,565.3],[325,625.2],[325,685.2],[325,745.2]],"mate":[25.5,445.3],"x":0,"y":6255},{"n":12,"w":349,"h":1055,"rear":[[325,145.4],[325,205.4],[325,265.4],[325,325.4],[325,385.4],[325,445.3],[325,505.3],[325,565.3],[325,625.3],[325,685.2],[325,745.2],[325,805.2]],"mate":[25.5,475.3],"x":349,"y":0},{"n":13,"w":349,"h":1115,"rear":[[325,145.4],[325,205.4],[325,265.4],[325,325.4],[325,385.4],[325,445.3],[325,505.3],[325,565.3],[325,625.3],[325,685.3],[325,745.2],[325,805.2],[325,865.2]],"mate":[25.5,505.3],"x":349,"y":1055},{"n":14,"w":349,"h":1175,"rear":[[325,145.5],[325,205.4],[325,265.4],[325,325.4],[325,385.4],[325,445.3],[325,505.3],[325,565.3],[325,625.3],[325,685.3],[325,745.2],[325,805.2],[325,865.2],[325,925.2]],"mate":[25.5,535.3],"x":349,"y":2170},{"n":15,"w":349,"h":1235,"rear":[[325,145.5],[325,205.4],[325,265.4],[325,325.4],[325,385.4],[325,445.4],[325,505.3],[325,565.3],[325,625.3],[325,685.3],[325,745.3],[325,805.2],[325,865.2],[325,925.2],[325,985.2]],"mate":[25.5,565.3],"x":349,"y":3345},{"n":16,"w":349,"h":1295,"rear":[[325,145.5],[325,205.4],[325,265.4],[325,325.4],[325,385.4],[325,445.4],[325,505.3],[325,565.3],[325,625.3],[325,685.3],[325,745.3],[325,805.3],[325,865.2],[325,925.2],[325,985.2],[325,1045.2]],"mate":[25.5,595.3],"x":349,"y":4580},{"n":17,"w":349,"h":1355,"rear":[[325,145.5],[325,205.4],[325,265.4],[325,325.4],[325,385.4],[325,445.4],[325,505.4],[325,565.3],[325,625.3],[325,685.3],[325,745.3],[325,805.3],[325,865.2],[325,925.2],[325,985.2],[325,1045.2],[325,1105.2]],"mate":[25.5,625.3],"x":349,"y":5875},{"n":18,"w":349,"h":1415,"rear":[[325,145.5],[325,205.4],[325,265.4],[325,325.4],[325,385.4],[325,445.4],[325,505.4],[325,565.3],[325,625.3],[325,685.3],[325,745.3],[325,805.3],[325,865.3],[325,925.2],[325,985.2],[325,1045.2],[325,1105.2],[325,1165.2]],"mate":[25.5,655.3],"x":698,"y":0},{"n":19,"w":349,"h":1475,"rear":[[325,145.5],[325,205.4],[325,265.4],[325,325.4],[325,385.4],[325,445.4],[325,505.4],[325,565.3],[325,625.3],[325,685.3],[325,745.3],[325,805.3],[325,865.3],[325,925.2],[325,985.2],[325,1045.2],[325,1105.2],[325,1165.2],[325,1225.2]],"mate":[25.5,685.3],"x":698,"y":1415},{"n":20,"w":349,"h":1535,"rear":[[325,145.5],[325,205.4],[325,265.4],[325,325.4],[325,385.4],[325,445.4],[325,505.4],[325,565.4],[325,625.3],[325,685.3],[325,745.3],[325,805.3],[325,865.3],[325,925.3],[325,985.2],[325,1045.2],[325,1105.2],[325,1165.2],[325,1225.2],[325,1285.2]],"mate":[25.5,715.3],"x":698,"y":2890}],"v":"mulmrm4s"},"plug-SH-down":{"W":1047,"H":7250,"ppm":60,"cells":[{"n":2,"w":349,"h":455,"rear":[[325,145.4],[325,205.3]],"mate":[25.5,175.3],"x":0,"y":0},{"n":3,"w":349,"h":515,"rear":[[325,145.4],[325,205.3],[325,265.3]],"mate":[25.5,205.3],"x":0,"y":455},{"n":4,"w":349,"h":575,"rear":[[325,145.4],[325,205.4],[325,265.3],[325,325.3]],"mate":[25.5,235.3],"x":0,"y":970},{"n":5,"w":349,"h":635,"rear":[[325,145.4],[325,205.4],[325,265.3],[325,325.3],[325,385.3]],"mate":[25.5,265.3],"x":0,"y":1545},{"n":6,"w":349,"h":695,"rear":[[325,145.4],[325,205.4],[325,265.3],[325,325.3],[325,385.3],[325,445.2]],"mate":[25.5,295.3],"x":0,"y":2180},{"n":7,"w":349,"h":755,"rear":[[325,145.4],[325,205.4],[325,265.4],[325,325.3],[325,385.3],[325,445.3],[325,505.2]],"mate":[25.5,325.3],"x":0,"y":2875},{"n":8,"w":349,"h":815,"rear":[[325,145.4],[325,205.4],[325,265.4],[325,325.3],[325,385.3],[325,445.3],[325,505.3],[325,565.2]],"mate":[25.5,355.3],"x":0,"y":3630},{"n":9,"w":349,"h":875,"rear":[[325,145.4],[325,205.4],[325,265.4],[325,325.4],[325,385.3],[325,445.3],[325,505.3],[325,565.2],[325,625.2]],"mate":[25.5,385.3],"x":0,"y":4445},{"n":10,"w":349,"h":935,"rear":[[325,145.4],[325,205.4],[325,265.4],[325,325.4],[325,385.3],[325,445.3],[325,505.3],[325,565.3],[325,625.2],[325,685.2]],"mate":[25.5,415.3],"x":0,"y":5320},{"n":11,"w":349,"h":995,"rear":[[325,145.4],[325,205.4],[325,265.4],[325,325.4],[325,385.3],[325,445.3],[325,505.3],[325,565.3],[325,625.2],[325,685.2],[325,745.2]],"mate":[25.5,445.3],"x":0,"y":6255},{"n":12,"w":349,"h":1055,"rear":[[325,145.4],[325,205.4],[325,265.4],[325,325.4],[325,385.4],[325,445.3],[325,505.3],[325,565.3],[325,625.3],[325,685.2],[325,745.2],[325,805.2]],"mate":[25.5,475.3],"x":349,"y":0},{"n":13,"w":349,"h":1115,"rear":[[325,145.4],[325,205.4],[325,265.4],[325,325.4],[325,385.4],[325,445.3],[325,505.3],[325,565.3],[325,625.3],[325,685.3],[325,745.2],[325,805.2],[325,865.2]],"mate":[25.5,505.3],"x":349,"y":1055},{"n":14,"w":349,"h":1175,"rear":[[325,145.5],[325,205.4],[325,265.4],[325,325.4],[325,385.4],[325,445.3],[325,505.3],[325,565.3],[325,625.3],[325,685.3],[325,745.2],[325,805.2],[325,865.2],[325,925.2]],"mate":[25.5,535.3],"x":349,"y":2170},{"n":15,"w":349,"h":1235,"rear":[[325,145.5],[325,205.4],[325,265.4],[325,325.4],[325,385.4],[325,445.4],[325,505.3],[325,565.3],[325,625.3],[325,685.3],[325,745.3],[325,805.2],[325,865.2],[325,925.2],[325,985.2]],"mate":[25.5,565.3],"x":349,"y":3345},{"n":16,"w":349,"h":1295,"rear":[[325,145.5],[325,205.4],[325,265.4],[325,325.4],[325,385.4],[325,445.4],[325,505.3],[325,565.3],[325,625.3],[325,685.3],[325,745.3],[325,805.3],[325,865.2],[325,925.2],[325,985.2],[325,1045.2]],"mate":[25.5,595.3],"x":349,"y":4580},{"n":17,"w":349,"h":1355,"rear":[[325,145.5],[325,205.4],[325,265.4],[325,325.4],[325,385.4],[325,445.4],[325,505.4],[325,565.3],[325,625.3],[325,685.3],[325,745.3],[325,805.3],[325,865.2],[325,925.2],[325,985.2],[325,1045.2],[325,1105.2]],"mate":[25.5,625.3],"x":349,"y":5875},{"n":18,"w":349,"h":1415,"rear":[[325,145.5],[325,205.4],[325,265.4],[325,325.4],[325,385.4],[325,445.4],[325,505.4],[325,565.3],[325,625.3],[325,685.3],[325,745.3],[325,805.3],[325,865.3],[325,925.2],[325,985.2],[325,1045.2],[325,1105.2],[325,1165.2]],"mate":[25.5,655.3],"x":698,"y":0},{"n":19,"w":349,"h":1475,"rear":[[325,145.5],[325,205.4],[325,265.4],[325,325.4],[325,385.4],[325,445.4],[325,505.4],[325,565.3],[325,625.3],[325,685.3],[325,745.3],[325,805.3],[325,865.3],[325,925.2],[325,985.2],[325,1045.2],[325,1105.2],[325,1165.2],[325,1225.2]],"mate":[25.5,685.3],"x":698,"y":1415},{"n":20,"w":349,"h":1535,"rear":[[325,145.5],[325,205.4],[325,265.4],[325,325.4],[325,385.4],[325,445.4],[325,505.4],[325,565.4],[325,625.3],[325,685.3],[325,745.3],[325,805.3],[325,865.3],[325,925.3],[325,985.2],[325,1045.2],[325,1105.2],[325,1165.2],[325,1225.2],[325,1285.2]],"mate":[25.5,715.3],"x":698,"y":2890}],"v":"mulms1d8"},"hdr-SH-H":{"W":1276,"H":4552,"ppm":44,"cells":[{"n":2,"w":414,"h":240,"src":"kicad","pins":[185,229],"top":30.8,"bottom":240,"x":0,"y":0},{"n":3,"w":458,"h":240,"src":"kicad","pins":[185,229,273],"top":30.8,"bottom":240,"x":0,"y":240},{"n":4,"w":502,"h":240,"src":"kicad","pins":[184.9,229,273,317.1],"top":30.8,"bottom":240,"x":0,"y":480},{"n":5,"w":546,"h":240,"src":"kicad","pins":[184.9,229,273,317,361.1],"top":30.8,"bottom":240,"x":0,"y":720},{"n":6,"w":590,"h":240,"src":"kicad","pins":[184.9,229,273,317,361,405.1],"top":30.8,"bottom":240,"x":0,"y":960},{"n":7,"w":634,"h":240,"src":"kicad","pins":[184.9,228.9,273,317,361,405.1,449.1],"top":30.8,"bottom":240,"x":0,"y":1200},{"n":8,"w":678,"h":240,"src":"kicad","pins":[184.9,228.9,273,317,361,405,449.1,493.1],"top":30.8,"bottom":240,"x":0,"y":1440},{"n":9,"w":722,"h":240,"src":"kicad","pins":[184.9,228.9,273,317,361,405,449,493.1,537.1],"top":30.8,"bottom":240,"x":0,"y":1680},{"n":10,"w":766,"h":240,"src":"kicad","pins":[184.9,228.9,272.9,317,361,405,449,493.1,537.1,581.1],"top":30.8,"bottom":240,"x":0,"y":1920},{"n":11,"w":810,"h":240,"src":"kicad","pins":[184.9,228.9,272.9,317,361,405,449,493,537.1,581.1,625.1],"top":30.8,"bottom":240,"x":0,"y":2160},{"n":12,"w":854,"h":240,"src":"kicad","pins":[184.9,228.9,272.9,316.9,361,405,449,493,537.1,581.1,625.1,669.1],"top":30.8,"bottom":240,"x":0,"y":2400},{"n":13,"w":898,"h":240,"src":"kicad","pins":[184.9,228.9,272.9,316.9,361,405,449,493,537,581.1,625.1,669.1,713.1],"top":30.8,"bottom":240,"x":0,"y":2640},{"n":14,"w":942,"h":240,"src":"kicad","pins":[184.9,228.9,272.9,316.9,361,405,449,493,537,581,625.1,669.1,713.1,757.1],"top":30.8,"bottom":240,"x":0,"y":2880},{"n":15,"w":986,"h":240,"src":"kicad","pins":[184.9,228.9,272.9,316.9,360.9,405,449,493,537,581,625.1,669.1,713.1,757.1,801.1],"top":30.8,"bottom":240,"x":0,"y":3120},{"n":16,"w":1144,"h":238,"src":"param","pins":[242,286,330,374,418,462,506,550,594,638,682,726,770,814,858,902],"top":30.9,"bottom":238,"x":0,"y":3360},{"n":17,"w":1188,"h":238,"src":"param","pins":[242,286,330,374,418,462,506,550,594,638,682,726,770,814,858,902,946],"top":30.9,"bottom":238,"x":0,"y":3598},{"n":18,"w":1232,"h":238,"src":"param","pins":[242,286,330,374,418,462,506,550,594,638,682,726,770,814,858,902,946,990],"top":30.9,"bottom":238,"x":0,"y":3836},{"n":19,"w":1276,"h":238,"src":"param","pins":[242,286,330,374,418,462,506,550,594,638,682,726,770,814,858,902,946,990,1034],"top":30.9,"bottom":238,"x":0,"y":4074},{"n":20,"w":1206,"h":240,"src":"kicad","pins":[184.9,228.9,272.9,316.9,360.9,404.9,448.9,493,537,581,625,669,713,757.1,801.1,845.1,889.1,933.1,977.1,1021.1],"top":30.8,"bottom":240,"x":0,"y":4312}],"v":"mulms5q0"},"hdr-SH-V":{"W":1294,"H":7382,"ppm":44,"cells":[{"n":2,"w":387,"h":378,"src":"kicad","pins":[171.5,215.5],"top":109.9,"bottom":268.1,"x":0,"y":0},{"n":3,"w":431,"h":378,"src":"kicad","pins":[171.5,215.5,259.5],"top":109.9,"bottom":268.1,"x":0,"y":378},{"n":4,"w":475,"h":378,"src":"kicad","pins":[171.5,215.5,259.5,303.5],"top":109.9,"bottom":268.1,"x":0,"y":756},{"n":5,"w":519,"h":378,"src":"kicad","pins":[171.5,215.5,259.5,303.5,347.5],"top":109.9,"bottom":268.1,"x":0,"y":1134},{"n":6,"w":563,"h":378,"src":"kicad","pins":[171.5,215.5,259.5,303.5,347.5,391.5],"top":109.9,"bottom":268.1,"x":0,"y":1512},{"n":7,"w":607,"h":378,"src":"kicad","pins":[171.5,215.5,259.5,303.5,347.5,391.5,435.5],"top":109.9,"bottom":268.1,"x":0,"y":1890},{"n":8,"w":651,"h":378,"src":"kicad","pins":[171.5,215.5,259.5,303.5,347.5,391.5,435.5,479.5],"top":109.9,"bottom":268.1,"x":0,"y":2268},{"n":9,"w":695,"h":378,"src":"kicad","pins":[171.6,215.5,259.5,303.5,347.5,391.5,435.5,479.5,523.4],"top":109.9,"bottom":268.1,"x":0,"y":2646},{"n":10,"w":739,"h":378,"src":"kicad","pins":[171.6,215.5,259.5,303.5,347.5,391.5,435.5,479.5,523.5,567.4],"top":109.9,"bottom":268.1,"x":0,"y":3024},{"n":11,"w":783,"h":378,"src":"kicad","pins":[171.6,215.5,259.5,303.5,347.5,391.5,435.5,479.5,523.5,567.5,611.4],"top":109.9,"bottom":268.1,"x":0,"y":3402},{"n":12,"w":827,"h":378,"src":"kicad","pins":[171.6,215.5,259.5,303.5,347.5,391.5,435.5,479.5,523.5,567.5,611.5,655.4],"top":109.9,"bottom":268.1,"x":0,"y":3780},{"n":13,"w":871,"h":378,"src":"kicad","pins":[171.6,215.6,259.5,303.5,347.5,391.5,435.5,479.5,523.5,567.5,611.5,655.4,699.4],"top":109.9,"bottom":268.1,"x":0,"y":4158},{"n":14,"w":915,"h":378,"src":"kicad","pins":[171.6,215.6,259.5,303.5,347.5,391.5,435.5,479.5,523.5,567.5,611.5,655.5,699.4,743.4],"top":109.9,"bottom":268.1,"x":0,"y":4536},{"n":15,"w":959,"h":378,"src":"kicad","pins":[171.6,215.6,259.5,303.5,347.5,391.5,435.5,479.5,523.5,567.5,611.5,655.5,699.5,743.4,787.4],"top":109.9,"bottom":268.1,"x":0,"y":4914},{"n":16,"w":1118,"h":418,"src":"param","pins":[228.9,272.9,316.9,360.9,404.9,449,493,537,581,625,669,713.1,757.1,801.1,845.1,889.1],"top":110,"bottom":308,"x":0,"y":5292},{"n":17,"w":1162,"h":418,"src":"param","pins":[228.9,272.9,316.9,360.9,404.9,449,493,537,581,625,669,713,757.1,801.1,845.1,889.1,933.1],"top":110,"bottom":308,"x":0,"y":5710},{"n":18,"w":1206,"h":418,"src":"param","pins":[228.9,272.9,316.9,360.9,404.9,448.9,493,537,581,625,669,713,757.1,801.1,845.1,889.1,933.1,977.1],"top":110,"bottom":308,"x":0,"y":6128},{"n":19,"w":1250,"h":418,"src":"param","pins":[228.9,272.9,316.9,360.9,404.9,448.9,493,537,581,625,669,713,757,801.1,845.1,889.1,933.1,977.1,1021.1],"top":110,"bottom":308,"x":0,"y":6546},{"n":20,"w":1294,"h":418,"src":"param","pins":[228.9,272.9,316.9,360.9,404.9,448.9,493,537,581,625,669,713,757,801,845.1,889.1,933.1,977.1,1021.1,1065.1],"top":110,"bottom":308,"x":0,"y":6964}],"v":"mulms9xr"},"plug-GH-up":{"W":557,"H":7884,"ppm":48,"cells":[{"n":2,"w":278,"h":327,"rear":[[258.8,97.1],[258.8,157]],"mate":[19.2,127.1],"x":0,"y":0},{"n":3,"w":278,"h":387,"rear":[[258.8,97.1],[258.8,157.1],[258.8,217]],"mate":[19.2,157.1],"x":0,"y":327},{"n":4,"w":278,"h":447,"rear":[[258.8,97.1],[258.8,157.1],[258.8,217],[258.8,277]],"mate":[19.2,187],"x":0,"y":714},{"n":5,"w":278,"h":507,"rear":[[258.8,97.1],[258.8,157.1],[258.8,217],[258.8,277],[258.8,337]],"mate":[19.2,217],"x":0,"y":1161},{"n":6,"w":278,"h":567,"rear":[[258.8,97.1],[258.8,157.1],[258.8,217.1],[258.8,277],[258.8,337],[258.8,396.9]],"mate":[19.2,247],"x":0,"y":1668},{"n":7,"w":279,"h":627,"rear":[[259.8,97.1],[259.8,157.1],[259.8,217.1],[259.8,277],[259.8,337],[259.8,397],[259.8,456.9]],"mate":[19.4,277],"x":0,"y":2235},{"n":8,"w":278,"h":687,"rear":[[258.8,97.1],[258.8,157.1],[258.8,217.1],[258.8,277.1],[258.8,337],[258.8,397],[258.8,457],[258.8,516.9]],"mate":[19.2,307],"x":0,"y":2862},{"n":9,"w":278,"h":747,"rear":[[258.8,97.2],[258.8,157.1],[258.8,217.1],[258.8,277.1],[258.8,337],[258.8,397],[258.8,457],[258.8,517],[258.8,576.9]],"mate":[19.2,337],"x":0,"y":3549},{"n":10,"w":278,"h":807,"rear":[[258.8,97.2],[258.8,157.1],[258.8,217.1],[258.8,277.1],[258.8,337],[258.8,397],[258.8,457],[258.8,517],[258.8,576.9],[258.8,636.9]],"mate":[19.3,367],"x":0,"y":4296},{"n":11,"w":278,"h":867,"rear":[[258.8,97.2],[258.8,157.1],[258.8,217.1],[258.8,277.1],[258.8,337.1],[258.8,397],[258.8,457],[258.8,517],[258.8,577],[258.8,636.9],[258.8,696.9]],"mate":[19.2,397],"x":0,"y":5103},{"n":12,"w":278,"h":927,"rear":[[258.8,97.2],[258.8,157.1],[258.8,217.1],[258.8,277.1],[258.8,337.1],[258.8,397],[258.8,457],[258.8,517],[258.8,577],[258.8,637],[258.8,696.9],[258.8,756.9]],"mate":[19.2,427],"x":0,"y":5970},{"n":13,"w":278,"h":987,"rear":[[258.8,97.2],[258.8,157.1],[258.8,217.1],[258.8,277.1],[258.8,337.1],[258.8,397.1],[258.8,457],[258.8,517],[258.8,577],[258.8,637],[258.8,696.9],[258.8,756.9],[258.8,816.9]],"mate":[19.2,457],"x":0,"y":6897},{"n":14,"w":278,"h":1047,"rear":[[258.8,97.2],[258.8,157.1],[258.8,217.1],[258.8,277.1],[258.8,337.1],[258.8,397.1],[258.8,457],[258.8,517],[258.8,577],[258.8,637],[258.8,697],[258.8,756.9],[258.8,816.9],[258.8,876.9]],"mate":[19.2,487],"x":279,"y":0},{"n":15,"w":278,"h":1107,"rear":[[258.8,97.2],[258.8,157.1],[258.8,217.1],[258.8,277.1],[258.8,337.1],[258.8,397.1],[258.8,457.1],[258.8,517],[258.8,577],[258.8,637],[258.8,697],[258.8,757],[258.8,816.9],[258.8,876.9],[258.8,936.9]],"mate":[19.2,517],"x":279,"y":1047}],"v":"muloowc9"},"plug-GH-down":{"W":557,"H":7884,"ppm":48,"cells":[{"n":2,"w":278,"h":327,"rear":[[258.8,97.1],[258.8,157]],"mate":[19.2,127.1],"x":0,"y":0},{"n":3,"w":278,"h":387,"rear":[[258.8,97.1],[258.8,157.1],[258.8,217]],"mate":[19.2,157.1],"x":0,"y":327},{"n":4,"w":278,"h":447,"rear":[[258.8,97.1],[258.8,157.1],[258.8,217],[258.8,277]],"mate":[19.2,187],"x":0,"y":714},{"n":5,"w":278,"h":507,"rear":[[258.8,97.1],[258.8,157.1],[258.8,217],[258.8,277],[258.8,337]],"mate":[19.2,217],"x":0,"y":1161},{"n":6,"w":278,"h":567,"rear":[[258.8,97.1],[258.8,157.1],[258.8,217.1],[258.8,277],[258.8,337],[258.8,396.9]],"mate":[19.2,247],"x":0,"y":1668},{"n":7,"w":279,"h":627,"rear":[[259.8,97.1],[259.8,157.1],[259.8,217.1],[259.8,277],[259.8,337],[259.8,397],[259.8,456.9]],"mate":[19.4,277],"x":0,"y":2235},{"n":8,"w":278,"h":687,"rear":[[258.8,97.1],[258.8,157.1],[258.8,217.1],[258.8,277.1],[258.8,337],[258.8,397],[258.8,457],[258.8,516.9]],"mate":[19.2,307],"x":0,"y":2862},{"n":9,"w":278,"h":747,"rear":[[258.8,97.2],[258.8,157.1],[258.8,217.1],[258.8,277.1],[258.8,337],[258.8,397],[258.8,457],[258.8,517],[258.8,576.9]],"mate":[19.2,337],"x":0,"y":3549},{"n":10,"w":278,"h":807,"rear":[[258.8,97.2],[258.8,157.1],[258.8,217.1],[258.8,277.1],[258.8,337],[258.8,397],[258.8,457],[258.8,517],[258.8,576.9],[258.8,636.9]],"mate":[19.3,367],"x":0,"y":4296},{"n":11,"w":278,"h":867,"rear":[[258.8,97.2],[258.8,157.1],[258.8,217.1],[258.8,277.1],[258.8,337.1],[258.8,397],[258.8,457],[258.8,517],[258.8,577],[258.8,636.9],[258.8,696.9]],"mate":[19.2,397],"x":0,"y":5103},{"n":12,"w":278,"h":927,"rear":[[258.8,97.2],[258.8,157.1],[258.8,217.1],[258.8,277.1],[258.8,337.1],[258.8,397],[258.8,457],[258.8,517],[258.8,577],[258.8,637],[258.8,696.9],[258.8,756.9]],"mate":[19.2,427],"x":0,"y":5970},{"n":13,"w":278,"h":987,"rear":[[258.8,97.2],[258.8,157.1],[258.8,217.1],[258.8,277.1],[258.8,337.1],[258.8,397.1],[258.8,457],[258.8,517],[258.8,577],[258.8,637],[258.8,696.9],[258.8,756.9],[258.8,816.9]],"mate":[19.2,457],"x":0,"y":6897},{"n":14,"w":278,"h":1047,"rear":[[258.8,97.2],[258.8,157.1],[258.8,217.1],[258.8,277.1],[258.8,337.1],[258.8,397.1],[258.8,457],[258.8,517],[258.8,577],[258.8,637],[258.8,697],[258.8,756.9],[258.8,816.9],[258.8,876.9]],"mate":[19.2,487],"x":279,"y":0},{"n":15,"w":278,"h":1107,"rear":[[258.8,97.2],[258.8,157.1],[258.8,217.1],[258.8,277.1],[258.8,337.1],[258.8,397.1],[258.8,457.1],[258.8,517],[258.8,577],[258.8,637],[258.8,697],[258.8,757],[258.8,816.9],[258.8,876.9],[258.8,936.9]],"mate":[19.2,517],"x":279,"y":1047}],"v":"mulop339"},"hdr-GH-H":{"W":1062,"H":3402,"ppm":36,"cells":[{"n":2,"w":401,"h":243,"src":"kicad","pins":[178,223],"top":25.2,"bottom":243,"x":0,"y":0},{"n":3,"w":446,"h":243,"src":"kicad","pins":[178,223,268],"top":25.2,"bottom":243,"x":0,"y":243},{"n":4,"w":491,"h":243,"src":"kicad","pins":[178.1,223,268,312.9],"top":25.2,"bottom":243,"x":0,"y":486},{"n":5,"w":536,"h":243,"src":"kicad","pins":[178.1,223,268,313,357.9],"top":25.2,"bottom":243,"x":0,"y":729},{"n":6,"w":581,"h":243,"src":"kicad","pins":[178.1,223,268,313,358,402.9],"top":25.2,"bottom":243,"x":0,"y":972},{"n":7,"w":626,"h":243,"src":"kicad","pins":[178.1,223.1,268,313,358,402.9,447.9],"top":25.2,"bottom":243,"x":0,"y":1215},{"n":8,"w":671,"h":243,"src":"kicad","pins":[178.1,223.1,268,313,358,403,447.9,492.9],"top":25.2,"bottom":243,"x":0,"y":1458},{"n":9,"w":716,"h":243,"src":"kicad","pins":[178.1,223.1,268.1,313,358,403,447.9,492.9,537.9],"top":25.2,"bottom":243,"x":0,"y":1701},{"n":10,"w":761,"h":243,"src":"kicad","pins":[178.1,223.1,268.1,313,358,403,448,492.9,537.9,582.9],"top":25.2,"bottom":243,"x":0,"y":1944},{"n":11,"w":806,"h":243,"src":"kicad","pins":[178.1,223.1,268.1,313,358,403,448,493,537.9,582.9,627.9],"top":25.2,"bottom":243,"x":0,"y":2187},{"n":12,"w":851,"h":243,"src":"kicad","pins":[178.1,223.1,268.1,313.1,358,403,448,493,537.9,582.9,627.9,672.9],"top":25.2,"bottom":243,"x":0,"y":2430},{"n":13,"w":896,"h":243,"src":"kicad","pins":[178.1,223.1,268.1,313.1,358,403,448,493,538,582.9,627.9,672.9,717.9],"top":25.2,"bottom":243,"x":0,"y":2673},{"n":14,"w":941,"h":243,"src":"kicad","pins":[178.1,223.1,268.1,313.1,358,403,448,493,538,583,627.9,672.9,717.9,762.9],"top":25.2,"bottom":243,"x":0,"y":2916},{"n":15,"w":1062,"h":243,"src":"param","pins":[216,261,306,351,396,441,486,531,576,621,666,711,756,801,846],"top":25.2,"bottom":243,"x":0,"y":3159}],"v":"mulop6zh"},"hdr-GH-V":{"W":1040,"H":5045,"ppm":36,"cells":[{"n":2,"w":380,"h":358,"src":"kicad","pins":[167.5,212.5],"top":89.9,"bottom":268.1,"x":0,"y":0},{"n":3,"w":425,"h":358,"src":"kicad","pins":[167.5,212.5,257.5],"top":89.9,"bottom":268.1,"x":0,"y":358},{"n":4,"w":470,"h":358,"src":"kicad","pins":[167.5,212.5,257.5,302.5],"top":89.9,"bottom":268.1,"x":0,"y":716},{"n":5,"w":515,"h":358,"src":"kicad","pins":[167.5,212.5,257.5,302.5,347.5],"top":89.9,"bottom":268.1,"x":0,"y":1074},{"n":6,"w":560,"h":358,"src":"kicad","pins":[167.5,212.5,257.5,302.5,347.5,392.5],"top":89.9,"bottom":268.1,"x":0,"y":1432},{"n":7,"w":605,"h":358,"src":"kicad","pins":[167.5,212.5,257.5,302.5,347.5,392.5,437.5],"top":89.9,"bottom":268.1,"x":0,"y":1790},{"n":8,"w":650,"h":358,"src":"kicad","pins":[167.5,212.5,257.5,302.5,347.5,392.5,437.5,482.5],"top":89.9,"bottom":268.1,"x":0,"y":2148},{"n":9,"w":695,"h":358,"src":"kicad","pins":[167.4,212.5,257.5,302.5,347.5,392.5,437.5,482.5,527.6],"top":89.9,"bottom":268.1,"x":0,"y":2506},{"n":10,"w":740,"h":358,"src":"kicad","pins":[167.4,212.5,257.5,302.5,347.5,392.5,437.5,482.5,527.5,572.6],"top":89.9,"bottom":268.1,"x":0,"y":2864},{"n":11,"w":785,"h":358,"src":"kicad","pins":[167.4,212.5,257.5,302.5,347.5,392.5,437.5,482.5,527.5,572.5,617.6],"top":89.9,"bottom":268.1,"x":0,"y":3222},{"n":12,"w":830,"h":358,"src":"kicad","pins":[167.4,212.5,257.5,302.5,347.5,392.5,437.5,482.5,527.5,572.5,617.5,662.6],"top":89.9,"bottom":268.1,"x":0,"y":3580},{"n":13,"w":875,"h":358,"src":"kicad","pins":[167.4,212.4,257.5,302.5,347.5,392.5,437.5,482.5,527.5,572.5,617.5,662.6,707.6],"top":89.9,"bottom":268.1,"x":0,"y":3938},{"n":14,"w":920,"h":358,"src":"kicad","pins":[167.4,212.4,257.5,302.5,347.5,392.5,437.5,482.5,527.5,572.5,617.5,662.5,707.6,752.6],"top":89.9,"bottom":268.1,"x":0,"y":4296},{"n":15,"w":1040,"h":391,"src":"param","pins":[205.1,250.1,295.1,340.1,385.1,430,475,520,565,610,654.9,699.9,744.9,789.9,834.9],"top":90.1,"bottom":300.9,"x":0,"y":4654}],"v":"mulopana"},"plug-PB-up":{"W":518,"H":7315,"ppm":48,"cells":[{"n":2,"w":259,"h":365,"rear":[[239.8,108.1],[239.8,168.1]],"mate":[19.2,138.1],"x":0,"y":0},{"n":3,"w":259,"h":425,"rear":[[239.8,108.1],[239.8,168.1],[239.8,228.1]],"mate":[19.2,168.1],"x":0,"y":365},{"n":4,"w":259,"h":485,"rear":[[239.8,108],[239.8,168.1],[239.8,228.1],[239.8,288.1]],"mate":[19.2,198.1],"x":0,"y":790},{"n":5,"w":259,"h":545,"rear":[[239.8,108],[239.8,168.1],[239.8,228.1],[239.8,288.1],[239.8,348.1]],"mate":[19.2,228.1],"x":0,"y":1275},{"n":6,"w":259,"h":605,"rear":[[239.8,108],[239.8,168.1],[239.8,228.1],[239.8,288.1],[239.8,348.1],[239.8,408.1]],"mate":[19.2,258.1],"x":0,"y":1820},{"n":7,"w":259,"h":665,"rear":[[239.8,108],[239.8,168.1],[239.8,228.1],[239.8,288.1],[239.8,348.1],[239.8,408.1],[239.8,468.1]],"mate":[19.2,288.1],"x":0,"y":2425},{"n":8,"w":259,"h":725,"rear":[[239.8,108],[239.8,168],[239.8,228.1],[239.8,288.1],[239.8,348.1],[239.8,408.1],[239.8,468.1],[239.8,528.1]],"mate":[19.2,318.1],"x":0,"y":3090},{"n":9,"w":259,"h":785,"rear":[[239.8,108],[239.8,168],[239.8,228.1],[239.8,288.1],[239.8,348.1],[239.8,408.1],[239.8,468.1],[239.8,528.1],[239.8,588.1]],"mate":[19.2,348.1],"x":0,"y":3815},{"n":10,"w":259,"h":845,"rear":[[239.8,108],[239.8,168],[239.8,228.1],[239.8,288.1],[239.8,348.1],[239.8,408.1],[239.8,468.1],[239.8,528.1],[239.8,588.1],[239.8,648.2]],"mate":[19.2,378.1],"x":0,"y":4600},{"n":11,"w":259,"h":905,"rear":[[239.8,108],[239.8,168],[239.8,228.1],[239.8,288.1],[239.8,348.1],[239.8,408.1],[239.8,468.1],[239.8,528.1],[239.8,588.1],[239.8,648.1],[239.8,708.2]],"mate":[19.2,408.1],"x":0,"y":5445},{"n":12,"w":259,"h":965,"rear":[[239.8,108],[239.8,168],[239.8,228],[239.8,288.1],[239.8,348.1],[239.8,408.1],[239.8,468.1],[239.8,528.1],[239.8,588.1],[239.8,648.1],[239.8,708.1],[239.8,768.2]],"mate":[19.2,438.1],"x":0,"y":6350},{"n":13,"w":259,"h":1025,"rear":[[239.8,108],[239.8,168],[239.8,228],[239.8,288.1],[239.8,348.1],[239.8,408.1],[239.8,468.1],[239.8,528.1],[239.8,588.1],[239.8,648.1],[239.8,708.1],[239.8,768.1],[239.8,828.2]],"mate":[19.2,468.1],"x":259,"y":0},{"n":14,"w":259,"h":1085,"rear":[[239.8,108],[239.8,168],[239.8,228],[239.8,288.1],[239.8,348.1],[239.8,408.1],[239.8,468.1],[239.8,528.1],[239.8,588.1],[239.8,648.1],[239.8,708.1],[239.8,768.1],[239.8,828.2],[239.8,888.2]],"mate":[19.2,498.1],"x":259,"y":1025},{"n":15,"w":259,"h":1145,"rear":[[239.8,108],[239.8,168],[239.8,228],[239.8,288.1],[239.8,348.1],[239.8,408.1],[239.8,468.1],[239.8,528.1],[239.8,588.1],[239.8,648.1],[239.8,708.1],[239.8,768.1],[239.8,828.1],[239.8,888.2],[239.8,948.2]],"mate":[19.2,528.1],"x":259,"y":2110}],"v":"muln5rgv"},"plug-PB-down":{"W":518,"H":7315,"ppm":48,"cells":[{"n":2,"w":259,"h":365,"rear":[[239.8,108.1],[239.8,168.1]],"mate":[19.2,138.1],"x":0,"y":0},{"n":3,"w":259,"h":425,"rear":[[239.8,108.1],[239.8,168.1],[239.8,228.1]],"mate":[19.2,168.1],"x":0,"y":365},{"n":4,"w":259,"h":485,"rear":[[239.8,108],[239.8,168.1],[239.8,228.1],[239.8,288.1]],"mate":[19.2,198.1],"x":0,"y":790},{"n":5,"w":259,"h":545,"rear":[[239.8,108],[239.8,168.1],[239.8,228.1],[239.8,288.1],[239.8,348.1]],"mate":[19.2,228.1],"x":0,"y":1275},{"n":6,"w":259,"h":605,"rear":[[239.8,108],[239.8,168.1],[239.8,228.1],[239.8,288.1],[239.8,348.1],[239.8,408.1]],"mate":[19.2,258.1],"x":0,"y":1820},{"n":7,"w":259,"h":665,"rear":[[239.8,108],[239.8,168.1],[239.8,228.1],[239.8,288.1],[239.8,348.1],[239.8,408.1],[239.8,468.1]],"mate":[19.2,288.1],"x":0,"y":2425},{"n":8,"w":259,"h":725,"rear":[[239.8,108],[239.8,168],[239.8,228.1],[239.8,288.1],[239.8,348.1],[239.8,408.1],[239.8,468.1],[239.8,528.1]],"mate":[19.2,318.1],"x":0,"y":3090},{"n":9,"w":259,"h":785,"rear":[[239.8,108],[239.8,168],[239.8,228.1],[239.8,288.1],[239.8,348.1],[239.8,408.1],[239.8,468.1],[239.8,528.1],[239.8,588.1]],"mate":[19.2,348.1],"x":0,"y":3815},{"n":10,"w":259,"h":845,"rear":[[239.8,108],[239.8,168],[239.8,228.1],[239.8,288.1],[239.8,348.1],[239.8,408.1],[239.8,468.1],[239.8,528.1],[239.8,588.1],[239.8,648.2]],"mate":[19.2,378.1],"x":0,"y":4600},{"n":11,"w":259,"h":905,"rear":[[239.8,108],[239.8,168],[239.8,228.1],[239.8,288.1],[239.8,348.1],[239.8,408.1],[239.8,468.1],[239.8,528.1],[239.8,588.1],[239.8,648.1],[239.8,708.2]],"mate":[19.2,408.1],"x":0,"y":5445},{"n":12,"w":259,"h":965,"rear":[[239.8,108],[239.8,168],[239.8,228],[239.8,288.1],[239.8,348.1],[239.8,408.1],[239.8,468.1],[239.8,528.1],[239.8,588.1],[239.8,648.1],[239.8,708.1],[239.8,768.2]],"mate":[19.2,438.1],"x":0,"y":6350},{"n":13,"w":259,"h":1025,"rear":[[239.8,108],[239.8,168],[239.8,228],[239.8,288.1],[239.8,348.1],[239.8,408.1],[239.8,468.1],[239.8,528.1],[239.8,588.1],[239.8,648.1],[239.8,708.1],[239.8,768.1],[239.8,828.2]],"mate":[19.2,468.1],"x":259,"y":0},{"n":14,"w":259,"h":1085,"rear":[[239.8,108],[239.8,168],[239.8,228],[239.8,288.1],[239.8,348.1],[239.8,408.1],[239.8,468.1],[239.8,528.1],[239.8,588.1],[239.8,648.1],[239.8,708.1],[239.8,768.1],[239.8,828.2],[239.8,888.2]],"mate":[19.2,498.1],"x":259,"y":1025},{"n":15,"w":259,"h":1145,"rear":[[239.8,108],[239.8,168],[239.8,228],[239.8,288.1],[239.8,348.1],[239.8,408.1],[239.8,468.1],[239.8,528.1],[239.8,588.1],[239.8,648.1],[239.8,708.1],[239.8,768.1],[239.8,828.1],[239.8,888.2],[239.8,948.2]],"mate":[19.2,528.1],"x":259,"y":2110}],"v":"muln5w2n"},"hdr-PB-H":{"W":1055,"H":2968,"ppm":36,"cells":[{"n":2,"w":470,"h":212,"src":"kicad","pins":[212.5,257.5],"top":25.2,"bottom":212,"x":0,"y":0},{"n":3,"w":515,"h":212,"src":"kicad","pins":[212.5,257.5,302.5],"top":25.2,"bottom":212,"x":0,"y":212},{"n":4,"w":560,"h":212,"src":"kicad","pins":[212.5,257.5,302.5,347.5],"top":25.2,"bottom":212,"x":0,"y":424},{"n":5,"w":605,"h":212,"src":"kicad","pins":[212.5,257.5,302.5,347.5,392.5],"top":25.2,"bottom":212,"x":0,"y":636},{"n":6,"w":650,"h":212,"src":"kicad","pins":[212.5,257.5,302.5,347.5,392.5,437.5],"top":25.2,"bottom":212,"x":0,"y":848},{"n":7,"w":695,"h":212,"src":"kicad","pins":[212.5,257.5,302.5,347.5,392.5,437.5,482.5],"top":25.2,"bottom":212,"x":0,"y":1060},{"n":8,"w":740,"h":212,"src":"kicad","pins":[212.5,257.5,302.5,347.5,392.5,437.5,482.5,527.5],"top":25.2,"bottom":212,"x":0,"y":1272},{"n":9,"w":785,"h":212,"src":"kicad","pins":[212.5,257.5,302.5,347.5,392.5,437.5,482.5,527.5,572.5],"top":25.2,"bottom":212,"x":0,"y":1484},{"n":10,"w":830,"h":212,"src":"kicad","pins":[212.5,257.5,302.5,347.5,392.5,437.5,482.5,527.5,572.5,617.5],"top":25.2,"bottom":212,"x":0,"y":1696},{"n":11,"w":875,"h":212,"src":"kicad","pins":[212.4,257.5,302.5,347.5,392.5,437.5,482.5,527.5,572.5,617.5,662.6],"top":25.2,"bottom":212,"x":0,"y":1908},{"n":12,"w":920,"h":212,"src":"kicad","pins":[212.4,257.5,302.5,347.5,392.5,437.5,482.5,527.5,572.5,617.5,662.5,707.6],"top":25.2,"bottom":212,"x":0,"y":2120},{"n":13,"w":965,"h":212,"src":"kicad","pins":[212.4,257.5,302.5,347.5,392.5,437.5,482.5,527.5,572.5,617.5,662.5,707.5,752.6],"top":25.2,"bottom":212,"x":0,"y":2332},{"n":14,"w":1010,"h":212,"src":"kicad","pins":[212.4,257.5,302.5,347.5,392.5,437.5,482.5,527.5,572.5,617.5,662.5,707.5,752.5,797.6],"top":25.2,"bottom":212,"x":0,"y":2544},{"n":15,"w":1055,"h":212,"src":"kicad","pins":[212.4,257.4,302.5,347.5,392.5,437.5,482.5,527.5,572.5,617.5,662.5,707.5,752.5,797.6,842.6],"top":25.2,"bottom":212,"x":0,"y":2756}],"v":"muln60lb"},"hdr-PB-V":{"W":1033,"H":4634,"ppm":36,"cells":[{"n":2,"w":448,"h":331,"src":"kicad","pins":[201.5,246.5],"top":89.9,"bottom":241.1,"x":0,"y":0},{"n":3,"w":493,"h":331,"src":"kicad","pins":[201.5,246.5,291.5],"top":89.9,"bottom":241.1,"x":0,"y":331},{"n":4,"w":538,"h":331,"src":"kicad","pins":[201.5,246.5,291.5,336.5],"top":89.9,"bottom":241.1,"x":0,"y":662},{"n":5,"w":583,"h":331,"src":"kicad","pins":[201.5,246.5,291.5,336.5,381.5],"top":89.9,"bottom":241.1,"x":0,"y":993},{"n":6,"w":628,"h":331,"src":"kicad","pins":[201.5,246.5,291.5,336.5,381.5,426.5],"top":89.9,"bottom":241.1,"x":0,"y":1324},{"n":7,"w":673,"h":331,"src":"kicad","pins":[201.5,246.5,291.5,336.5,381.5,426.5,471.5],"top":89.9,"bottom":241.1,"x":0,"y":1655},{"n":8,"w":718,"h":331,"src":"kicad","pins":[201.5,246.5,291.5,336.5,381.5,426.5,471.5,516.5],"top":89.9,"bottom":241.1,"x":0,"y":1986},{"n":9,"w":763,"h":331,"src":"kicad","pins":[201.5,246.5,291.5,336.5,381.5,426.5,471.5,516.5,561.5],"top":89.9,"bottom":241.1,"x":0,"y":2317},{"n":10,"w":808,"h":331,"src":"kicad","pins":[201.6,246.5,291.5,336.5,381.5,426.5,471.5,516.5,561.5,606.4],"top":89.9,"bottom":241.1,"x":0,"y":2648},{"n":11,"w":853,"h":331,"src":"kicad","pins":[201.6,246.5,291.5,336.5,381.5,426.5,471.5,516.5,561.5,606.5,651.4],"top":89.9,"bottom":241.1,"x":0,"y":2979},{"n":12,"w":898,"h":331,"src":"kicad","pins":[201.6,246.5,291.5,336.5,381.5,426.5,471.5,516.5,561.5,606.5,651.5,696.4],"top":89.9,"bottom":241.1,"x":0,"y":3310},{"n":13,"w":943,"h":331,"src":"kicad","pins":[201.6,246.5,291.5,336.5,381.5,426.5,471.5,516.5,561.5,606.5,651.5,696.5,741.4],"top":89.9,"bottom":241.1,"x":0,"y":3641},{"n":14,"w":988,"h":331,"src":"kicad","pins":[201.6,246.6,291.5,336.5,381.5,426.5,471.5,516.5,561.5,606.5,651.5,696.5,741.4,786.4],"top":89.9,"bottom":241.1,"x":0,"y":3972},{"n":15,"w":1033,"h":331,"src":"kicad","pins":[201.6,246.6,291.5,336.5,381.5,426.5,471.5,516.5,561.5,606.5,651.5,696.5,741.5,786.4,831.4],"top":89.9,"bottom":241.1,"x":0,"y":4303}],"v":"muln63xm"},"plug-XH-up":{"W":696,"H":7590,"ppm":28,"cells":[{"n":2,"w":232,"h":320,"rear":[[220.8,78.4],[220.8,148.3]],"mate":[11.2,113.3],"x":0,"y":0},{"n":3,"w":232,"h":390,"rear":[[220.8,78.4],[220.8,148.3],[220.8,218.3]],"mate":[11.2,148.3],"x":0,"y":320},{"n":4,"w":232,"h":460,"rear":[[220.8,78.4],[220.8,148.3],[220.8,218.3],[220.8,288.3]],"mate":[11.2,183.3],"x":0,"y":710},{"n":5,"w":232,"h":530,"rear":[[220.8,78.4],[220.8,148.3],[220.8,218.3],[220.8,288.3],[220.8,358.3]],"mate":[11.2,218.3],"x":0,"y":1170},{"n":6,"w":232,"h":600,"rear":[[220.8,78.4],[220.8,148.4],[220.8,218.3],[220.8,288.3],[220.8,358.3],[220.8,428.3]],"mate":[11.2,253.3],"x":0,"y":1700},{"n":7,"w":232,"h":670,"rear":[[220.8,78.4],[220.8,148.4],[220.8,218.3],[220.8,288.3],[220.8,358.3],[220.8,428.3],[220.8,498.3]],"mate":[11.2,288.3],"x":0,"y":2300},{"n":8,"w":232,"h":740,"rear":[[220.8,78.4],[220.8,148.4],[220.8,218.3],[220.8,288.3],[220.8,358.3],[220.8,428.3],[220.8,498.3],[220.8,568.3]],"mate":[11.2,323.3],"x":0,"y":2970},{"n":9,"w":232,"h":810,"rear":[[220.8,78.4],[220.8,148.4],[220.8,218.4],[220.8,288.3],[220.8,358.3],[220.8,428.3],[220.8,498.3],[220.8,568.3],[220.8,638.3]],"mate":[11.2,358.3],"x":0,"y":3710},{"n":10,"w":232,"h":880,"rear":[[220.8,78.4],[220.8,148.4],[220.8,218.4],[220.8,288.3],[220.8,358.3],[220.8,428.3],[220.8,498.3],[220.8,568.3],[220.8,638.3],[220.8,708.3]],"mate":[11.2,393.3],"x":0,"y":4520},{"n":11,"w":232,"h":950,"rear":[[220.8,78.4],[220.8,148.4],[220.8,218.4],[220.8,288.3],[220.8,358.3],[220.8,428.3],[220.8,498.3],[220.8,568.3],[220.8,638.3],[220.8,708.3],[220.8,778.3]],"mate":[11.2,428.3],"x":0,"y":5400},{"n":12,"w":232,"h":1020,"rear":[[220.8,78.4],[220.8,148.4],[220.8,218.4],[220.8,288.3],[220.8,358.3],[220.8,428.3],[220.8,498.3],[220.8,568.3],[220.8,638.3],[220.8,708.3],[220.8,778.3],[220.8,848.3]],"mate":[11.2,463.3],"x":0,"y":6350},{"n":13,"w":232,"h":1090,"rear":[[220.8,78.4],[220.8,148.4],[220.8,218.4],[220.8,288.4],[220.8,358.3],[220.8,428.3],[220.8,498.3],[220.8,568.3],[220.8,638.3],[220.8,708.3],[220.8,778.3],[220.8,848.3],[220.8,918.2]],"mate":[11.2,498.3],"x":232,"y":0},{"n":14,"w":232,"h":1160,"rear":[[220.8,78.4],[220.8,148.4],[220.8,218.4],[220.8,288.4],[220.8,358.3],[220.8,428.3],[220.8,498.3],[220.8,568.3],[220.8,638.3],[220.8,708.3],[220.8,778.3],[220.8,848.3],[220.8,918.3],[220.8,988.2]],"mate":[11.2,533.3],"x":232,"y":1090},{"n":15,"w":232,"h":1230,"rear":[[220.8,78.4],[220.8,148.4],[220.8,218.4],[220.8,288.4],[220.8,358.3],[220.8,428.3],[220.8,498.3],[220.8,568.3],[220.8,638.3],[220.8,708.3],[220.8,778.3],[220.8,848.3],[220.8,918.3],[220.8,988.3],[220.8,1058.2]],"mate":[11.2,568.3],"x":232,"y":2250},{"n":16,"w":232,"h":1300,"rear":[[220.8,78.4],[220.8,148.4],[220.8,218.4],[220.8,288.4],[220.8,358.4],[220.8,428.3],[220.8,498.3],[220.8,568.3],[220.8,638.3],[220.8,708.3],[220.8,778.3],[220.8,848.3],[220.8,918.3],[220.8,988.3],[220.8,1058.3],[220.8,1128.2]],"mate":[11.2,603.3],"x":232,"y":3480},{"n":17,"w":232,"h":1370,"rear":[[220.8,78.4],[220.8,148.4],[220.8,218.4],[220.8,288.4],[220.8,358.4],[220.8,428.3],[220.8,498.3],[220.8,568.3],[220.8,638.3],[220.8,708.3],[220.8,778.3],[220.8,848.3],[220.8,918.3],[220.8,988.3],[220.8,1058.3],[220.8,1128.3],[220.8,1198.2]],"mate":[11.2,638.3],"x":232,"y":4780},{"n":18,"w":232,"h":1440,"rear":[[220.8,78.4],[220.8,148.4],[220.8,218.4],[220.8,288.4],[220.8,358.4],[220.8,428.3],[220.8,498.3],[220.8,568.3],[220.8,638.3],[220.8,708.3],[220.8,778.3],[220.8,848.3],[220.8,918.3],[220.8,988.3],[220.8,1058.3],[220.8,1128.3],[220.8,1198.3],[220.8,1268.2]],"mate":[11.2,673.3],"x":232,"y":6150},{"n":19,"w":232,"h":1510,"rear":[[220.8,78.4],[220.8,148.4],[220.8,218.4],[220.8,288.4],[220.8,358.4],[220.8,428.3],[220.8,498.3],[220.8,568.3],[220.8,638.3],[220.8,708.3],[220.8,778.3],[220.8,848.3],[220.8,918.3],[220.8,988.3],[220.8,1058.3],[220.8,1128.3],[220.8,1198.3],[220.8,1268.2],[220.8,1338.2]],"mate":[11.2,708.3],"x":464,"y":0},{"n":20,"w":232,"h":1580,"rear":[[220.8,78.4],[220.8,148.4],[220.8,218.4],[220.8,288.4],[220.8,358.4],[220.8,428.4],[220.8,498.3],[220.8,568.3],[220.8,638.3],[220.8,708.3],[220.8,778.3],[220.8,848.3],[220.8,918.3],[220.8,988.3],[220.8,1058.3],[220.8,1128.3],[220.8,1198.3],[220.8,1268.3],[220.8,1338.2],[220.8,1408.2]],"mate":[11.2,743.3],"x":464,"y":1510}],"v":"mulnvc4o"},"plug-XH-down":{"W":696,"H":7590,"ppm":28,"cells":[{"n":2,"w":232,"h":320,"rear":[[220.8,78.4],[220.8,148.3]],"mate":[11.2,113.3],"x":0,"y":0},{"n":3,"w":232,"h":390,"rear":[[220.8,78.4],[220.8,148.3],[220.8,218.3]],"mate":[11.2,148.3],"x":0,"y":320},{"n":4,"w":232,"h":460,"rear":[[220.8,78.4],[220.8,148.3],[220.8,218.3],[220.8,288.3]],"mate":[11.2,183.3],"x":0,"y":710},{"n":5,"w":232,"h":530,"rear":[[220.8,78.4],[220.8,148.3],[220.8,218.3],[220.8,288.3],[220.8,358.3]],"mate":[11.2,218.3],"x":0,"y":1170},{"n":6,"w":232,"h":600,"rear":[[220.8,78.4],[220.8,148.4],[220.8,218.3],[220.8,288.3],[220.8,358.3],[220.8,428.3]],"mate":[11.2,253.3],"x":0,"y":1700},{"n":7,"w":232,"h":670,"rear":[[220.8,78.4],[220.8,148.4],[220.8,218.3],[220.8,288.3],[220.8,358.3],[220.8,428.3],[220.8,498.3]],"mate":[11.2,288.3],"x":0,"y":2300},{"n":8,"w":232,"h":740,"rear":[[220.8,78.4],[220.8,148.4],[220.8,218.3],[220.8,288.3],[220.8,358.3],[220.8,428.3],[220.8,498.3],[220.8,568.3]],"mate":[11.2,323.3],"x":0,"y":2970},{"n":9,"w":232,"h":810,"rear":[[220.8,78.4],[220.8,148.4],[220.8,218.4],[220.8,288.3],[220.8,358.3],[220.8,428.3],[220.8,498.3],[220.8,568.3],[220.8,638.3]],"mate":[11.2,358.3],"x":0,"y":3710},{"n":10,"w":232,"h":880,"rear":[[220.8,78.4],[220.8,148.4],[220.8,218.4],[220.8,288.3],[220.8,358.3],[220.8,428.3],[220.8,498.3],[220.8,568.3],[220.8,638.3],[220.8,708.3]],"mate":[11.2,393.3],"x":0,"y":4520},{"n":11,"w":232,"h":950,"rear":[[220.8,78.4],[220.8,148.4],[220.8,218.4],[220.8,288.3],[220.8,358.3],[220.8,428.3],[220.8,498.3],[220.8,568.3],[220.8,638.3],[220.8,708.3],[220.8,778.3]],"mate":[11.2,428.3],"x":0,"y":5400},{"n":12,"w":232,"h":1020,"rear":[[220.8,78.4],[220.8,148.4],[220.8,218.4],[220.8,288.3],[220.8,358.3],[220.8,428.3],[220.8,498.3],[220.8,568.3],[220.8,638.3],[220.8,708.3],[220.8,778.3],[220.8,848.3]],"mate":[11.2,463.3],"x":0,"y":6350},{"n":13,"w":232,"h":1090,"rear":[[220.8,78.4],[220.8,148.4],[220.8,218.4],[220.8,288.4],[220.8,358.3],[220.8,428.3],[220.8,498.3],[220.8,568.3],[220.8,638.3],[220.8,708.3],[220.8,778.3],[220.8,848.3],[220.8,918.2]],"mate":[11.2,498.3],"x":232,"y":0},{"n":14,"w":232,"h":1160,"rear":[[220.8,78.4],[220.8,148.4],[220.8,218.4],[220.8,288.4],[220.8,358.3],[220.8,428.3],[220.8,498.3],[220.8,568.3],[220.8,638.3],[220.8,708.3],[220.8,778.3],[220.8,848.3],[220.8,918.3],[220.8,988.2]],"mate":[11.2,533.3],"x":232,"y":1090},{"n":15,"w":232,"h":1230,"rear":[[220.8,78.4],[220.8,148.4],[220.8,218.4],[220.8,288.4],[220.8,358.3],[220.8,428.3],[220.8,498.3],[220.8,568.3],[220.8,638.3],[220.8,708.3],[220.8,778.3],[220.8,848.3],[220.8,918.3],[220.8,988.3],[220.8,1058.2]],"mate":[11.2,568.3],"x":232,"y":2250},{"n":16,"w":232,"h":1300,"rear":[[220.8,78.4],[220.8,148.4],[220.8,218.4],[220.8,288.4],[220.8,358.4],[220.8,428.3],[220.8,498.3],[220.8,568.3],[220.8,638.3],[220.8,708.3],[220.8,778.3],[220.8,848.3],[220.8,918.3],[220.8,988.3],[220.8,1058.3],[220.8,1128.2]],"mate":[11.2,603.3],"x":232,"y":3480},{"n":17,"w":232,"h":1370,"rear":[[220.8,78.4],[220.8,148.4],[220.8,218.4],[220.8,288.4],[220.8,358.4],[220.8,428.3],[220.8,498.3],[220.8,568.3],[220.8,638.3],[220.8,708.3],[220.8,778.3],[220.8,848.3],[220.8,918.3],[220.8,988.3],[220.8,1058.3],[220.8,1128.3],[220.8,1198.2]],"mate":[11.2,638.3],"x":232,"y":4780},{"n":18,"w":232,"h":1440,"rear":[[220.8,78.4],[220.8,148.4],[220.8,218.4],[220.8,288.4],[220.8,358.4],[220.8,428.3],[220.8,498.3],[220.8,568.3],[220.8,638.3],[220.8,708.3],[220.8,778.3],[220.8,848.3],[220.8,918.3],[220.8,988.3],[220.8,1058.3],[220.8,1128.3],[220.8,1198.3],[220.8,1268.2]],"mate":[11.2,673.3],"x":232,"y":6150},{"n":19,"w":232,"h":1510,"rear":[[220.8,78.4],[220.8,148.4],[220.8,218.4],[220.8,288.4],[220.8,358.4],[220.8,428.3],[220.8,498.3],[220.8,568.3],[220.8,638.3],[220.8,708.3],[220.8,778.3],[220.8,848.3],[220.8,918.3],[220.8,988.3],[220.8,1058.3],[220.8,1128.3],[220.8,1198.3],[220.8,1268.2],[220.8,1338.2]],"mate":[11.2,708.3],"x":464,"y":0},{"n":20,"w":232,"h":1580,"rear":[[220.8,78.4],[220.8,148.4],[220.8,218.4],[220.8,288.4],[220.8,358.4],[220.8,428.4],[220.8,498.3],[220.8,568.3],[220.8,638.3],[220.8,708.3],[220.8,778.3],[220.8,848.3],[220.8,918.3],[220.8,988.3],[220.8,1058.3],[220.8,1128.3],[220.8,1198.3],[220.8,1268.3],[220.8,1338.2],[220.8,1408.2]],"mate":[11.2,743.3],"x":464,"y":1510}],"v":"mulnvg3z"},"hdr-XH-H":{"W":1272,"H":3583,"ppm":22,"cells":[{"n":2,"w":282,"h":189,"src":"kicad","pins":[113.5,168.5],"top":15.4,"bottom":189,"x":0,"y":0},{"n":3,"w":337,"h":189,"src":"kicad","pins":[113.4,168.5,223.6],"top":15.4,"bottom":189,"x":0,"y":189},{"n":4,"w":392,"h":189,"src":"kicad","pins":[113.4,168.5,223.5,278.6],"top":15.4,"bottom":189,"x":0,"y":378},{"n":5,"w":447,"h":189,"src":"kicad","pins":[113.4,168.5,223.5,278.5,333.6],"top":15.4,"bottom":189,"x":0,"y":567},{"n":6,"w":502,"h":189,"src":"kicad","pins":[113.4,168.4,223.5,278.5,333.6,388.6],"top":15.4,"bottom":189,"x":0,"y":756},{"n":7,"w":557,"h":189,"src":"kicad","pins":[113.4,168.4,223.5,278.5,333.5,388.6,443.6],"top":15.4,"bottom":189,"x":0,"y":945},{"n":8,"w":612,"h":189,"src":"kicad","pins":[113.4,168.4,223.4,278.5,333.5,388.6,443.6,498.6],"top":15.4,"bottom":189,"x":0,"y":1134},{"n":9,"w":667,"h":189,"src":"kicad","pins":[113.4,168.4,223.4,278.5,333.5,388.5,443.6,498.6,553.6],"top":15.4,"bottom":189,"x":0,"y":1323},{"n":10,"w":722,"h":189,"src":"kicad","pins":[113.4,168.4,223.4,278.5,333.5,388.5,443.5,498.6,553.6,608.6],"top":15.4,"bottom":189,"x":0,"y":1512},{"n":11,"w":777,"h":189,"src":"kicad","pins":[113.4,168.4,223.4,278.4,333.5,388.5,443.5,498.6,553.6,608.6,663.6],"top":15.4,"bottom":189,"x":0,"y":1701},{"n":12,"w":832,"h":189,"src":"kicad","pins":[113.4,168.4,223.4,278.4,333.5,388.5,443.5,498.5,553.6,608.6,663.6,718.6],"top":15.4,"bottom":189,"x":0,"y":1890},{"n":13,"w":887,"h":189,"src":"kicad","pins":[113.4,168.4,223.4,278.4,333.5,388.5,443.5,498.5,553.5,608.6,663.6,718.6,773.6],"top":15.4,"bottom":189,"x":0,"y":2079},{"n":14,"w":942,"h":189,"src":"kicad","pins":[113.3,168.4,223.4,278.4,333.4,388.5,443.5,498.5,553.5,608.6,663.6,718.6,773.6,828.7],"top":15.4,"bottom":189,"x":0,"y":2268},{"n":15,"w":997,"h":189,"src":"kicad","pins":[113.3,168.4,223.4,278.4,333.4,388.5,443.5,498.5,553.5,608.5,663.6,718.6,773.6,828.6,883.7],"top":15.4,"bottom":189,"x":0,"y":2457},{"n":16,"w":1052,"h":189,"src":"kicad","pins":[113.3,168.4,223.4,278.4,333.4,388.4,443.5,498.5,553.5,608.5,663.6,718.6,773.6,828.6,883.6,938.7],"top":15.4,"bottom":189,"x":0,"y":2646},{"n":17,"w":1107,"h":187,"src":"param","pins":[113.3,168.4,223.4,278.4,333.4,388.4,443.5,498.5,553.5,608.5,663.5,718.6,773.6,828.6,883.6,938.6,993.7],"top":15.4,"bottom":187,"x":0,"y":2835},{"n":18,"w":1162,"h":187,"src":"param","pins":[113.3,168.4,223.4,278.4,333.4,388.4,443.5,498.5,553.5,608.5,663.5,718.5,773.6,828.6,883.6,938.6,993.6,1048.7],"top":15.4,"bottom":187,"x":0,"y":3022},{"n":19,"w":1217,"h":187,"src":"param","pins":[113.3,168.4,223.4,278.4,333.4,388.4,443.4,498.5,553.5,608.5,663.5,718.5,773.6,828.6,883.6,938.6,993.6,1048.6,1103.7],"top":15.4,"bottom":187,"x":0,"y":3209},{"n":20,"w":1272,"h":187,"src":"param","pins":[113.3,168.4,223.4,278.4,333.4,388.4,443.4,498.5,553.5,608.5,663.5,718.5,773.5,828.6,883.6,938.6,993.6,1048.6,1103.6,1158.7],"top":15.4,"bottom":187,"x":0,"y":3396}],"v":"mulnvkwm"},"hdr-XH-V":{"W":1258,"H":4545,"ppm":22,"cells":[{"n":2,"w":268,"h":237,"src":"kicad","pins":[106.5,161.5],"top":55.1,"bottom":181.9,"x":0,"y":0},{"n":3,"w":323,"h":237,"src":"kicad","pins":[106.6,161.5,216.4],"top":55.1,"bottom":181.9,"x":0,"y":237},{"n":4,"w":378,"h":237,"src":"kicad","pins":[106.6,161.5,216.5,271.4],"top":55.1,"bottom":181.9,"x":0,"y":474},{"n":5,"w":433,"h":237,"src":"kicad","pins":[106.6,161.6,216.5,271.4,326.4],"top":55.1,"bottom":181.9,"x":0,"y":711},{"n":6,"w":488,"h":237,"src":"kicad","pins":[106.6,161.6,216.5,271.5,326.4,381.4],"top":55.1,"bottom":181.9,"x":0,"y":948},{"n":7,"w":543,"h":237,"src":"kicad","pins":[106.6,161.6,216.5,271.5,326.5,381.4,436.4],"top":55.1,"bottom":181.9,"x":0,"y":1185},{"n":8,"w":598,"h":237,"src":"kicad","pins":[106.6,161.6,216.6,271.5,326.5,381.4,436.4,491.4],"top":55.1,"bottom":181.9,"x":0,"y":1422},{"n":9,"w":653,"h":237,"src":"kicad","pins":[106.6,161.6,216.6,271.5,326.5,381.5,436.4,491.4,546.4],"top":55.1,"bottom":181.9,"x":0,"y":1659},{"n":10,"w":708,"h":237,"src":"kicad","pins":[106.6,161.6,216.6,271.5,326.5,381.5,436.5,491.4,546.4,601.4],"top":55.1,"bottom":181.9,"x":0,"y":1896},{"n":11,"w":763,"h":237,"src":"kicad","pins":[106.6,161.6,216.6,271.6,326.5,381.5,436.5,491.4,546.4,601.4,656.4],"top":55.1,"bottom":181.9,"x":0,"y":2133},{"n":12,"w":818,"h":237,"src":"kicad","pins":[106.6,161.6,216.6,271.6,326.5,381.5,436.5,491.5,546.4,601.4,656.4,711.4],"top":55.1,"bottom":181.9,"x":0,"y":2370},{"n":13,"w":873,"h":237,"src":"kicad","pins":[106.7,161.6,216.6,271.6,326.6,381.5,436.5,491.5,546.4,601.4,656.4,711.4,766.3],"top":55.1,"bottom":181.9,"x":0,"y":2607},{"n":14,"w":928,"h":237,"src":"kicad","pins":[106.7,161.6,216.6,271.6,326.6,381.5,436.5,491.5,546.5,601.4,656.4,711.4,766.4,821.3],"top":55.1,"bottom":181.9,"x":0,"y":2844},{"n":15,"w":983,"h":237,"src":"kicad","pins":[106.7,161.6,216.6,271.6,326.6,381.5,436.5,491.5,546.5,601.5,656.4,711.4,766.4,821.4,876.3],"top":55.1,"bottom":181.9,"x":0,"y":3081},{"n":16,"w":1038,"h":237,"src":"kicad","pins":[106.7,161.6,216.6,271.6,326.6,381.6,436.5,491.5,546.5,601.5,656.4,711.4,766.4,821.4,876.4,931.3],"top":55.1,"bottom":181.9,"x":0,"y":3318},{"n":17,"w":1093,"h":251,"src":"param","pins":[106.7,161.6,216.6,271.6,326.6,381.6,436.5,491.5,546.5,601.5,656.5,711.4,766.4,821.4,876.4,931.4,986.3],"top":55,"bottom":196,"x":0,"y":3555},{"n":18,"w":1148,"h":251,"src":"param","pins":[106.7,161.6,216.6,271.6,326.6,381.6,436.5,491.5,546.5,601.5,656.5,711.5,766.4,821.4,876.4,931.4,986.4,1041.3],"top":55,"bottom":196,"x":0,"y":3806},{"n":19,"w":1203,"h":251,"src":"param","pins":[106.7,161.6,216.6,271.6,326.6,381.6,436.6,491.5,546.5,601.5,656.5,711.5,766.4,821.4,876.4,931.4,986.4,1041.4,1096.3],"top":55,"bottom":196,"x":0,"y":4057},{"n":20,"w":1258,"h":237,"src":"kicad","pins":[106.7,161.6,216.6,271.6,326.6,381.6,436.6,491.5,546.5,601.5,656.5,711.5,766.5,821.4,876.4,931.4,986.4,1041.4,1096.4,1151.3],"top":55.1,"bottom":181.9,"x":0,"y":4308}],"v":"mulnvp89"},"hdr-XH-H-SMD":{"W":1329,"H":3583,"ppm":22,"cells":[{"n":2,"w":282,"h":189,"src":"kicad","pins":[113.5,168.5],"top":15.4,"bottom":189,"x":0,"y":0},{"n":3,"w":337,"h":189,"src":"kicad","pins":[113.4,168.5,223.6],"top":15.4,"bottom":189,"x":0,"y":189},{"n":4,"w":392,"h":189,"src":"kicad","pins":[113.4,168.5,223.5,278.6],"top":15.4,"bottom":189,"x":0,"y":378},{"n":5,"w":447,"h":189,"src":"kicad","pins":[113.4,168.5,223.5,278.5,333.6],"top":15.4,"bottom":189,"x":0,"y":567},{"n":6,"w":502,"h":189,"src":"kicad","pins":[113.4,168.4,223.5,278.5,333.6,388.6],"top":15.4,"bottom":189,"x":0,"y":756},{"n":7,"w":557,"h":189,"src":"kicad","pins":[113.4,168.4,223.5,278.5,333.5,388.6,443.6],"top":15.4,"bottom":189,"x":0,"y":945},{"n":8,"w":612,"h":189,"src":"kicad","pins":[113.4,168.4,223.4,278.5,333.5,388.6,443.6,498.6],"top":15.4,"bottom":189,"x":0,"y":1134},{"n":9,"w":667,"h":189,"src":"kicad","pins":[113.4,168.4,223.4,278.5,333.5,388.5,443.6,498.6,553.6],"top":15.4,"bottom":189,"x":0,"y":1323},{"n":10,"w":722,"h":189,"src":"kicad","pins":[113.4,168.4,223.4,278.5,333.5,388.5,443.5,498.6,553.6,608.6],"top":15.4,"bottom":189,"x":0,"y":1512},{"n":11,"w":777,"h":189,"src":"kicad","pins":[113.4,168.4,223.4,278.4,333.5,388.5,443.5,498.6,553.6,608.6,663.6],"top":15.4,"bottom":189,"x":0,"y":1701},{"n":12,"w":832,"h":189,"src":"kicad","pins":[113.4,168.4,223.4,278.4,333.5,388.5,443.5,498.5,553.6,608.6,663.6,718.6],"top":15.4,"bottom":189,"x":0,"y":1890},{"n":13,"w":887,"h":189,"src":"kicad","pins":[113.4,168.4,223.4,278.4,333.5,388.5,443.5,498.5,553.5,608.6,663.6,718.6,773.6],"top":15.4,"bottom":189,"x":0,"y":2079},{"n":14,"w":942,"h":189,"src":"kicad","pins":[113.3,168.4,223.4,278.4,333.4,388.5,443.5,498.5,553.5,608.6,663.6,718.6,773.6,828.7],"top":15.4,"bottom":189,"x":0,"y":2268},{"n":15,"w":997,"h":189,"src":"kicad","pins":[113.3,168.4,223.4,278.4,333.4,388.5,443.5,498.5,553.5,608.5,663.6,718.6,773.6,828.6,883.7],"top":15.4,"bottom":189,"x":0,"y":2457},{"n":16,"w":1052,"h":189,"src":"kicad","pins":[113.3,168.4,223.4,278.4,333.4,388.4,443.5,498.5,553.5,608.5,663.6,718.6,773.6,828.6,883.6,938.7],"top":15.4,"bottom":189,"x":0,"y":2646},{"n":17,"w":1164,"h":187,"src":"param","pins":[141.9,196.9,251.9,307,362,417,472,527,582,637,692,747,802,857,912.1,967.1,1022.1],"top":15.4,"bottom":187,"x":0,"y":2835},{"n":18,"w":1219,"h":187,"src":"param","pins":[141.9,196.9,251.9,307,362,417,472,527,582,637,692,747,802,857,912,967.1,1022.1,1077.1],"top":15.4,"bottom":187,"x":0,"y":3022},{"n":19,"w":1274,"h":187,"src":"param","pins":[141.9,196.9,251.9,306.9,362,417,472,527,582,637,692,747,802,857,912,967.1,1022.1,1077.1,1132.1],"top":15.4,"bottom":187,"x":0,"y":3209},{"n":20,"w":1329,"h":187,"src":"param","pins":[141.9,196.9,251.9,306.9,362,417,472,527,582,637,692,747,802,857,912,967,1022.1,1077.1,1132.1,1187.1],"top":15.4,"bottom":187,"x":0,"y":3396}],"v":"mulnvu3s"},"hdr-XH-V-SMD":{"W":1261,"H":4650,"ppm":22,"cells":[{"n":2,"w":268,"h":237,"src":"kicad","pins":[106.5,161.5],"top":55.1,"bottom":181.9,"x":0,"y":0},{"n":3,"w":323,"h":237,"src":"kicad","pins":[106.6,161.5,216.4],"top":55.1,"bottom":181.9,"x":0,"y":237},{"n":4,"w":378,"h":237,"src":"kicad","pins":[106.6,161.5,216.5,271.4],"top":55.1,"bottom":181.9,"x":0,"y":474},{"n":5,"w":433,"h":237,"src":"kicad","pins":[106.6,161.6,216.5,271.4,326.4],"top":55.1,"bottom":181.9,"x":0,"y":711},{"n":6,"w":488,"h":237,"src":"kicad","pins":[106.6,161.6,216.5,271.5,326.4,381.4],"top":55.1,"bottom":181.9,"x":0,"y":948},{"n":7,"w":543,"h":237,"src":"kicad","pins":[106.6,161.6,216.5,271.5,326.5,381.4,436.4],"top":55.1,"bottom":181.9,"x":0,"y":1185},{"n":8,"w":598,"h":237,"src":"kicad","pins":[106.6,161.6,216.6,271.5,326.5,381.4,436.4,491.4],"top":55.1,"bottom":181.9,"x":0,"y":1422},{"n":9,"w":653,"h":237,"src":"kicad","pins":[106.6,161.6,216.6,271.5,326.5,381.5,436.4,491.4,546.4],"top":55.1,"bottom":181.9,"x":0,"y":1659},{"n":10,"w":708,"h":237,"src":"kicad","pins":[106.6,161.6,216.6,271.5,326.5,381.5,436.5,491.4,546.4,601.4],"top":55.1,"bottom":181.9,"x":0,"y":1896},{"n":11,"w":763,"h":237,"src":"kicad","pins":[106.6,161.6,216.6,271.6,326.5,381.5,436.5,491.4,546.4,601.4,656.4],"top":55.1,"bottom":181.9,"x":0,"y":2133},{"n":12,"w":818,"h":237,"src":"kicad","pins":[106.6,161.6,216.6,271.6,326.5,381.5,436.5,491.5,546.4,601.4,656.4,711.4],"top":55.1,"bottom":181.9,"x":0,"y":2370},{"n":13,"w":873,"h":237,"src":"kicad","pins":[106.7,161.6,216.6,271.6,326.6,381.5,436.5,491.5,546.4,601.4,656.4,711.4,766.3],"top":55.1,"bottom":181.9,"x":0,"y":2607},{"n":14,"w":928,"h":237,"src":"kicad","pins":[106.7,161.6,216.6,271.6,326.6,381.5,436.5,491.5,546.5,601.4,656.4,711.4,766.4,821.3],"top":55.1,"bottom":181.9,"x":0,"y":2844},{"n":15,"w":983,"h":237,"src":"kicad","pins":[106.7,161.6,216.6,271.6,326.6,381.5,436.5,491.5,546.5,601.5,656.4,711.4,766.4,821.4,876.3],"top":55.1,"bottom":181.9,"x":0,"y":3081},{"n":16,"w":1038,"h":237,"src":"kicad","pins":[106.7,161.6,216.6,271.6,326.6,381.6,436.5,491.5,546.5,601.5,656.4,711.4,766.4,821.4,876.4,931.3],"top":55.1,"bottom":181.9,"x":0,"y":3318},{"n":17,"w":1151,"h":286,"src":"param","pins":[135.3,190.4,245.4,300.4,355.4,410.4,465.5,520.5,575.5,630.5,685.5,740.6,795.6,850.6,905.6,960.6,1015.7],"top":55,"bottom":231,"x":0,"y":3555},{"n":18,"w":1206,"h":286,"src":"param","pins":[135.3,190.4,245.4,300.4,355.4,410.4,465.5,520.5,575.5,630.5,685.5,740.5,795.6,850.6,905.6,960.6,1015.6,1070.7],"top":55,"bottom":231,"x":0,"y":3841},{"n":19,"w":1261,"h":286,"src":"param","pins":[135.3,190.4,245.4,300.4,355.4,410.4,465.4,520.5,575.5,630.5,685.5,740.5,795.6,850.6,905.6,960.6,1015.6,1070.6,1125.7],"top":55,"bottom":231,"x":0,"y":4127},{"n":20,"w":1258,"h":237,"src":"kicad","pins":[106.7,161.6,216.6,271.6,326.6,381.6,436.6,491.5,546.5,601.5,656.5,711.5,766.5,821.4,876.4,931.4,986.4,1041.4,1096.4,1151.3],"top":55.1,"bottom":181.9,"x":0,"y":4413}],"v":"mulnvyjk"},"hdr-PB-H-THT":{"W":965,"H":2968,"ppm":36,"cells":[{"n":2,"w":380,"h":212,"src":"param","pins":[167.5,212.5],"top":25.2,"bottom":212,"x":0,"y":0},{"n":3,"w":425,"h":212,"src":"param","pins":[167.5,212.5,257.5],"top":25.2,"bottom":212,"x":0,"y":212},{"n":4,"w":470,"h":212,"src":"param","pins":[167.5,212.5,257.5,302.5],"top":25.2,"bottom":212,"x":0,"y":424},{"n":5,"w":515,"h":212,"src":"param","pins":[167.5,212.5,257.5,302.5,347.5],"top":25.2,"bottom":212,"x":0,"y":636},{"n":6,"w":560,"h":212,"src":"param","pins":[167.5,212.5,257.5,302.5,347.5,392.5],"top":25.2,"bottom":212,"x":0,"y":848},{"n":7,"w":605,"h":212,"src":"param","pins":[167.5,212.5,257.5,302.5,347.5,392.5,437.5],"top":25.2,"bottom":212,"x":0,"y":1060},{"n":8,"w":650,"h":212,"src":"param","pins":[167.5,212.5,257.5,302.5,347.5,392.5,437.5,482.5],"top":25.2,"bottom":212,"x":0,"y":1272},{"n":9,"w":695,"h":212,"src":"param","pins":[167.4,212.5,257.5,302.5,347.5,392.5,437.5,482.5,527.6],"top":25.2,"bottom":212,"x":0,"y":1484},{"n":10,"w":740,"h":212,"src":"param","pins":[167.4,212.5,257.5,302.5,347.5,392.5,437.5,482.5,527.5,572.6],"top":25.2,"bottom":212,"x":0,"y":1696},{"n":11,"w":785,"h":212,"src":"param","pins":[167.4,212.5,257.5,302.5,347.5,392.5,437.5,482.5,527.5,572.5,617.6],"top":25.2,"bottom":212,"x":0,"y":1908},{"n":12,"w":830,"h":212,"src":"param","pins":[167.4,212.5,257.5,302.5,347.5,392.5,437.5,482.5,527.5,572.5,617.5,662.6],"top":25.2,"bottom":212,"x":0,"y":2120},{"n":13,"w":875,"h":212,"src":"param","pins":[167.4,212.4,257.5,302.5,347.5,392.5,437.5,482.5,527.5,572.5,617.5,662.6,707.6],"top":25.2,"bottom":212,"x":0,"y":2332},{"n":14,"w":920,"h":212,"src":"param","pins":[167.4,212.4,257.5,302.5,347.5,392.5,437.5,482.5,527.5,572.5,617.5,662.5,707.6,752.6],"top":25.2,"bottom":212,"x":0,"y":2544},{"n":15,"w":965,"h":212,"src":"param","pins":[167.4,212.4,257.5,302.5,347.5,392.5,437.5,482.5,527.5,572.5,617.5,662.5,707.5,752.6,797.6],"top":25.2,"bottom":212,"x":0,"y":2756}],"v":"muln66jr"},"hdr-PB-V-THT":{"W":943,"H":4228,"ppm":36,"cells":[{"n":2,"w":358,"h":302,"src":"param","pins":[156.5,201.5],"top":89.9,"bottom":212.1,"x":0,"y":0},{"n":3,"w":403,"h":302,"src":"param","pins":[156.5,201.5,246.5],"top":89.9,"bottom":212.1,"x":0,"y":302},{"n":4,"w":448,"h":302,"src":"param","pins":[156.5,201.5,246.5,291.5],"top":89.9,"bottom":212.1,"x":0,"y":604},{"n":5,"w":493,"h":302,"src":"param","pins":[156.5,201.5,246.5,291.5,336.5],"top":89.9,"bottom":212.1,"x":0,"y":906},{"n":6,"w":538,"h":302,"src":"param","pins":[156.5,201.5,246.5,291.5,336.5,381.5],"top":89.9,"bottom":212.1,"x":0,"y":1208},{"n":7,"w":583,"h":302,"src":"param","pins":[156.5,201.5,246.5,291.5,336.5,381.5,426.5],"top":89.9,"bottom":212.1,"x":0,"y":1510},{"n":8,"w":628,"h":302,"src":"param","pins":[156.6,201.5,246.5,291.5,336.5,381.5,426.5,471.4],"top":89.9,"bottom":212.1,"x":0,"y":1812},{"n":9,"w":673,"h":302,"src":"param","pins":[156.6,201.5,246.5,291.5,336.5,381.5,426.5,471.5,516.4],"top":89.9,"bottom":212.1,"x":0,"y":2114},{"n":10,"w":718,"h":302,"src":"param","pins":[156.6,201.5,246.5,291.5,336.5,381.5,426.5,471.5,516.5,561.4],"top":89.9,"bottom":212.1,"x":0,"y":2416},{"n":11,"w":763,"h":302,"src":"param","pins":[156.6,201.5,246.5,291.5,336.5,381.5,426.5,471.5,516.5,561.5,606.4],"top":89.9,"bottom":212.1,"x":0,"y":2718},{"n":12,"w":808,"h":302,"src":"param","pins":[156.6,201.6,246.5,291.5,336.5,381.5,426.5,471.5,516.5,561.5,606.4,651.4],"top":89.9,"bottom":212.1,"x":0,"y":3020},{"n":13,"w":853,"h":302,"src":"param","pins":[156.6,201.6,246.5,291.5,336.5,381.5,426.5,471.5,516.5,561.5,606.5,651.4,696.4],"top":89.9,"bottom":212.1,"x":0,"y":3322},{"n":14,"w":898,"h":302,"src":"param","pins":[156.6,201.6,246.5,291.5,336.5,381.5,426.5,471.5,516.5,561.5,606.5,651.5,696.4,741.4],"top":89.9,"bottom":212.1,"x":0,"y":3624},{"n":15,"w":943,"h":302,"src":"param","pins":[156.6,201.6,246.5,291.5,336.5,381.5,426.5,471.5,516.5,561.5,606.5,651.5,696.5,741.4,786.4],"top":89.9,"bottom":212.1,"x":0,"y":3926}],"v":"muln69fg"}}/*END*/;
+const cellOf = (name, n) => SPR[name].cells.find(c => c.n === n);
+// nested svg that shows one sprite cell in its own pixel coordinates
+const spriteSvg = (name, c) =>
+  `<svg x="0" y="0" width="${c.w}" height="${c.h}" viewBox="${c.x} ${c.y} ${c.w} ${c.h}" overflow="hidden"><image href="img/${name}.webp${SPR[name].v ? '?v=' + SPR[name].v : ''}" width="${SPR[name].W}" height="${SPR[name].H}"/></svg>`;
+
+/* ---------- header preview (as the user sees it) ---------- */
+// default sprite = the variant KiCad has a model for; the other one lives in its own sheet
+const hdrName = s => { const base = `hdr-${state.type}-${state[s].mount}`, v = state[s].variant;
+  return v === TYPES[state.type].variants[0] ? base : `${base}-${v}`; };
+function drawHeader(s){
+  const st = state[s], n = state.n, name = hdrName(s), c = cellOf(name, n);
+  const xs = c.pins.slice().sort((a,b)=>a-b);
+  const sp = n > 1 ? xs[1]-xs[0] : c.w;
+  const maxLen = Math.max(...Array.from({length:n},(_,i)=>sig(i).length));
+  const fs = c.w/22, rot = maxLen*0.62*fs > sp*0.95;
+  const band = rot ? fs*5.2 : fs*2.2, capH = fs*2;
+  const H = st.mount==='H' ? capH + c.h + band : band + c.h + capH;
+  const y0 = st.mount==='H' ? capH : band;               // image top
+  const order = Array.from({length:n}, (_,k) => st.dir==='L' ? k : n-1-k);
+  let t = '';
+  xs.forEach((x,k) => {
+    const i = order[k], first = i===0;
+    const y = st.mount==='H' ? y0 + c.h + (rot ? fs*0.8 : fs*1.5) : y0 - fs*0.7;
+    const style = `font-size="${fs}" fill="${first?'#1D5BBF':'#2B3530'}"${first?' font-weight="700"':''}`;
+    t += rot
+      ? `<text x="${x}" y="${y}" ${style} text-anchor="${st.mount==='H'?'end':'start'}" transform="rotate(-60 ${x} ${y})" dominant-baseline="middle">${esc(sig(i))}</text>`
+      : `<text x="${x}" y="${y}" ${style} text-anchor="middle">${esc(sig(i))}</text>`;
+  });
+  const cap = st.mount==='H'
+    ? `<text x="${c.w/2}" y="${fs*1.3}" font-size="${fs*0.85}" fill="#5A6962" text-anchor="middle">вид спереду · замок ${hLockTop(s) ? 'зверху' : 'знизу'}</text>`
+    : `<text x="${c.w/2}" y="${y0 + c.h + fs*1.4}" font-size="${fs*0.85}" fill="#5A6962" text-anchor="middle">вид згори · ▼ замок з вашого боку</text>`;
+  return `<svg viewBox="0 0 ${c.w} ${H}" role="img" aria-label="Роз'єм ${s}" style="font-family:'IBM Plex Mono',monospace">
+    <g transform="translate(0 ${y0})">${spriteSvg(name, c)}</g>${t}${cap}</svg>`;
+}
+
+/* ---------- the cable "photo" ---------- */
+const COLORS = ['#D12B2B','#1C1C1C','#E8C21A','#2E9E44','#2F6FD6','#EDEDED','#EF7D17','#7E47B5','#8C8C8C','#7A4B24'];
+const OD = {SH:0.85, GH:1.0, PB:0.9, XH:1.4};
+function wireColor(k){ return COLORS[k % COLORS.length]; }   // always coloured, like most seller photos
+function drawCable(r){
+  const n = state.n, type = state.type;
+  // which rendered face of the housing points 'up' (away from the board / toward the latch wall) when mated.
+  // SH and PicoBlade: the smooth face, not the one with open contacts.
+  const flip = type === 'SH' || type === 'PB';
+  // PicoBlade is drawn turned over along the cable axis: side A shows its contact face by default.
+  // Turning the whole cable over swaps both visible faces and reverses the row order, the wiring stays the same.
+  const turnOver = type === 'PB';
+  const faceFlip = flip !== turnOver, topFirst = r.topFirst !== turnOver;
+  const faceA = faceFlip ? 'down' : 'up', faceB = (r.same ? faceA : (faceA === 'up' ? 'down' : 'up'));
+  const nA = `plug-${type}-${faceA}`, nB = `plug-${type}-${faceB}`;
+  const cA = cellOf(nA, n), cB = cellOf(nB, n), ppm = SPR[nA].ppm;
+  const f = Math.min(0.85, 330 / Math.max(cA.h, cB.h));
+  const W = 1000, H = Math.max(cA.h, cB.h)*f + 120, cy = 50 + Math.max(cA.h, cB.h)*f/2;
+  const xA = 120, xB = W - 120;
+  const mid = c => c.rear.reduce((a,p)=>a+p[1],0)/c.rear.length;
+  const yA0 = cy - mid(cA)*f, yB0 = cy - mid(cB)*f;
+  const rearA = cA.rear.map(p => [xA + (p[0]-cA.mate[0])*f, yA0 + p[1]*f]);
+  const rearB = cB.rear.map(p => [xB - (p[0]-cB.mate[0])*f, yB0 + p[1]*f]);
+  const mm = ppm*f, ww = OD[type]*mm*0.6, tuck = 1.2*mm;   // wires drawn thinner than true OD so the housings read better
+  const rowSig = k => topFirst ? k : n-1-k;
+
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Кабель, покладений пласко" style="font-family:'IBM Plex Mono',monospace">
+  <defs>
+    <pattern id="mat" width="40" height="40" patternUnits="userSpaceOnUse"><rect width="40" height="40" fill="#51677A"/><path d="M40 0H0V40" fill="none" stroke="#6A8195" stroke-width="1"/></pattern>
+    <filter id="wsh" x="-5%" y="-30%" width="110%" height="160%"><feDropShadow dx="0" dy="${Math.max(2,mm*0.9)}" stdDeviation="${Math.max(1.5,mm*0.6)}" flood-color="#0B1620" flood-opacity=".45"/></filter>
+  </defs>
+  <rect width="${W}" height="${H}" fill="url(#mat)"/>`;
+
+  // wires under the housings, with a gentle common wave like a real loose cable
+  const x1 = rearA[0][0] - tuck, x2 = rearB[0][0] + tuck, steps = 60;
+  const spacing = n>1 ? Math.abs(rearA[1][1]-rearA[0][1]) : 10, amp = Math.min(10, spacing*0.3);
+  let wires = '';
+  for(let k=0;k<n;k++){
+    const ya = rearA[k][1], yb = rearB[k][1], c = wireColor(k);
+    let d = '';
+    for(let j=0;j<=steps;j++){
+      const u = j/steps, x = x1 + (x2-x1)*u, env = Math.sin(Math.PI*u);
+      const y = ya + (yb-ya)*u + amp*env*Math.sin(2*Math.PI*u*1.15 + .6) + env*env*amp*0.6;
+      d += (j?'L':'M') + x.toFixed(1) + ' ' + y.toFixed(1);
+    }
+    wires += `<path d="${d}" fill="none" stroke="#0A0F14" stroke-opacity=".55" stroke-width="${ww+1.2}" stroke-linejoin="round"/>`;
+    wires += `<path d="${d}" fill="none" stroke="${c}" stroke-width="${ww}" stroke-linejoin="round"/>`;
+    wires += `<path d="${d}" fill="none" stroke="#FFFFFF" stroke-opacity="${c==='#EDEDED'?.9:.25}" stroke-width="${Math.max(.8,ww*.26)}" transform="translate(0 ${-ww*.2})" stroke-linejoin="round"/>`;
+  }
+  s += `<g filter="url(#wsh)">${wires}</g>`;
+  s += `<g transform="translate(${xA - cA.mate[0]*f} ${yA0}) scale(${f})">${spriteSvg(nA, cA)}</g>`;
+  s += `<g transform="translate(${xB + cB.mate[0]*f} ${yB0}) scale(${-f} ${f})">${spriteSvg(nB, cB)}</g>`;
+
+  const fs = Math.max(9, Math.min(13, spacing*0.8));
+  for(let k=0;k<n;k++){
+    const i = rowSig(k), bold = i===0 ? ' font-weight="700" fill="#FFFFFF"' : ' fill="#D5E1EA"';
+    s += `<text x="${xA-12}" y="${rearA[k][1] + fs*0.35}" font-size="${fs}" text-anchor="end"${bold}>${esc(sig(i))}</text>`;
+    s += `<text x="${xB+12}" y="${rearB[k][1] + fs*0.35}" font-size="${fs}"${bold}>${esc(sig(i))}</text>`;
+  }
+  const cxA = xA + (cA.w/2 - cA.mate[0])*f*0.6, cxB = xB - (cB.w/2 - cB.mate[0])*f*0.6;
+  const cap = (x, up, name) =>
+    `<text x="${x}" y="28" font-size="14" font-weight="600" fill="#FFFFFF" text-anchor="middle">${name}</text>
+     <text x="${x}" y="${H-20}" font-size="13" fill="${up?'#FFE08A':'#9FD3FF'}" text-anchor="middle">${up?FACE(type).up:FACE(type).down}</text>`;
+  s += cap(cxA, faceA === 'up', 'до плати A') + cap(cxB, faceB === 'up', 'до плати B');
+  s += `<text x="${W/2}" y="${H-20}" font-size="12" fill="#C3D2DD" text-anchor="middle">вид згори · кабель лежить пласко</text>`;
+  return s + '</svg>';
+}
+
+/* what marks the 'up' face of the housing on seller photos */
+const FACE = t => (t==='SH' || t==='PB')
+  ? {up:'▲ контакти видно', down:'▼ гладким боком', same:"обидва роз'єми лежать відкритими контактами догори", diff:"один роз'єм лежить відкритими контактами догори, другий — гладким боком", word:'бік з відкритими контактами'}
+  : {up:'▲ замок догори', down:'▼ замок донизу', same:"обидва роз'єми лежать замком догори", diff:"один роз'єм лежить замком догори, другий — замком донизу", word:'замок'};
+
+/* ---------- verdict ---------- */
+function verdict(r){
+  const t = TYPES[state.type], n = state.n;
+  const n0 = state.n;
+  document.getElementById('pill').textContent = r.same ? `Дзеркальний · 1 → ${n0}` : 'Прямий · 1 → 1';
+  document.getElementById('pillNote').textContent = r.same
+    ? `Контакт 1 одного роз'єму йде на контакт ${n0} іншого. На фото продавця обидва роз'єми лежать однаковим боком («same direction», 同向).`
+    : `Контакт 1 йде на контакт 1, сигнали без перехрещень. На фото продавця роз'єми лежать різними боками («reverse direction», 反向).`;
+  document.getElementById('photo').innerHTML = drawCable(r);
+  const a = state.A, b = state.B;
+  const en = r.same ? 'same direction' : 'reverse direction';
+  const qs = [`JST ${t.q} ${n}P double head cable ${en}`, `${t.q} ${n}P 双头 ${r.same?'同向':'反向'}`];
+  document.getElementById('queries').innerHTML = qs.map((q,i)=>
+    `<div class="q"><code>${esc(q)}</code><button type="button" data-q="${i}">Копіювати</button></div>`).join('');
+  document.querySelectorAll('[data-q]').forEach(btn => btn.addEventListener('click', async () => {
+    try{ await navigator.clipboard.writeText(qs[+btn.dataset.q]); btn.textContent = 'Скопійовано'; }
+    catch(e){ btn.textContent = 'Виділіть текст'; }
+    setTimeout(() => btn.textContent = 'Копіювати', 1500);
+  }));
+}
+
+/* ---------- copy the cable picture as PNG ---------- */
+const dataUrlCache = new Map();
+async function toDataUrl(url){
+  if(!dataUrlCache.has(url)) dataUrlCache.set(url, fetch(url).then(r => r.blob()).then(b => new Promise(res => {
+    const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(b); })));
+  return dataUrlCache.get(url);
+}
+async function photoPng(scale = 2){
+  const src = document.querySelector('#photo svg'), svg = src.cloneNode(true);
+  // sprites must be embedded, an SVG drawn as an image cannot fetch them
+  for(const im of svg.querySelectorAll('image')) im.setAttribute('href', await toDataUrl(im.getAttribute('href')));
+  const [, , w, h] = svg.getAttribute('viewBox').split(/\s+/).map(Number);
+  svg.setAttribute('width', w * scale); svg.setAttribute('height', h * scale);
+  svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  const img = new Image();
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(svg));
+  await img.decode();
+  const c = document.createElement('canvas'); c.width = w * scale; c.height = h * scale;
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  return new Promise(res => c.toBlob(res, 'image/png'));
+}
+function showShot(blob){
+  const url = URL.createObjectURL(blob), el = document.createElement('div');
+  el.className = 'shot';
+  el.innerHTML = `<figure><img src="${url}" alt="Зображення кабелю"><figcaption><span>Браузер не дав скопіювати автоматично. Клацніть по картинці правою кнопкою → «Копіювати зображення».</span><button type="button">Закрити</button></figcaption></figure>`;
+  const close = () => { el.remove(); URL.revokeObjectURL(url); };
+  el.addEventListener('click', e => { if(e.target === el || e.target.tagName === 'BUTTON') close(); });
+  document.body.appendChild(el);
+}
+document.getElementById('copyImg').addEventListener('click', async e => {
+  const btn = e.currentTarget, png = photoPng();
+  const done = t => { btn.textContent = t; setTimeout(() => btn.textContent = 'Копіювати зображення', 1600); };
+  try{
+    // the promise form keeps the click's user activation (needed by Safari)
+    await navigator.clipboard.write([new ClipboardItem({'image/png': png})]);
+    done('Скопійовано');
+  }catch(err){
+    try{ showShot(await png); }catch(e2){ done('Не вдалося'); }
+  }
+});
+
+function update(){
+  const t0 = TYPES[state.type], n0 = state.n;
+  fixVariant('A'); fixVariant('B');
+  typeSel.value = state.type;
+  const t = TYPES[state.type]; nIn.value = state.n; nIn.min = t.min; nIn.max = t.max;
+  syncSide('A'); syncSide('B');
+  verdict(analyse());
+  save();
+}
+
+buildSide('A'); buildSide('B');
+clampN(); rebuildPins(); update();
+</script>
