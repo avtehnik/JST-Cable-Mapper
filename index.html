@@ -67,6 +67,10 @@ h1{font:700 20px/1 var(--cond);letter-spacing:.01em;margin:0 6px 4px 0;white-spa
 .part{font:11px var(--mono);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .part b{font-weight:500;color:var(--ink)}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .preview{background:#E4E8E6;border-radius:8px;overflow:hidden;padding:4px 6px;align-self:stretch;display:grid;place-items:center}
+.noneopt{display:none}
+.side.none .noneopt{display:grid}
+.side.none .opt{display:none}
+.side.none{grid-template-columns:1fr}
 .preview svg{display:block;width:100%;height:auto;max-height:150px}
 @media (max-width:900px){.pair{grid-template-columns:1fr}}
 @media (max-width:480px){.side{grid-template-columns:1fr}}
@@ -86,6 +90,29 @@ h1{font:700 20px/1 var(--cond);letter-spacing:.01em;margin:0 6px 4px 0;white-spa
 .shot figcaption{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;color:var(--muted)}
 .photo svg{display:block;width:100%;height:auto;max-height:max(260px,calc(100vh - 430px))}
 .search{display:flex;flex-direction:column;gap:4px}
+/* view mode: opened from a BOM link — only the finished cable and the table */
+.view-sum,.viewbar{display:none}
+body.view .top, body.view .pair, body.view .search, body.view #pill, body.view #pillNote, body.view #autoCol, body.view .pinmap .awg{display:none}
+body.view .view-sum{display:block;font:600 15px/1.3 var(--cond)}
+body.view .view-sum small{display:block;font:400 12px var(--sans);color:var(--muted)}
+body.view .viewbar{display:flex;justify-content:center}
+body.view .viewbar button{color:var(--muted)}
+body.view .photo svg{max-height:calc(100vh - 110px)}
+.pinmap{display:flex;flex-direction:column;gap:4px;min-height:0}
+.pinmap-h{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.pinmap .tbl{overflow:auto;max-height:max(160px,calc(100vh - 590px));border:1px solid var(--line);border-radius:6px}
+.pinmap table{border-collapse:collapse;width:100%;font-size:12px}
+.pinmap th,.pinmap td{padding:3px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+.pinmap th{font:600 10px var(--sans);text-transform:uppercase;letter-spacing:.05em;color:var(--muted);background:var(--panel-2);position:sticky;top:0}
+.pinmap td.n{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:center}
+.pinmap td.sig{font-family:var(--mono)}
+.pinmap th .ty{font:400 10px var(--mono);text-transform:none;letter-spacing:0;color:var(--muted)}
+.pinmap tr:last-child td{border-bottom:0}
+.awg{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-left:auto}
+.awg select{width:auto;padding:2px 6px;font-size:12px}
+.csel{width:auto;padding:1px 4px;font-size:12px;background:transparent;border-color:transparent}
+.csel:hover{border-color:var(--line)}
+.sw{display:inline-block;width:18px;height:8px;border-radius:4px;vertical-align:middle;box-shadow:inset 0 0 0 1px rgba(0,0,0,.35)}
 .q{display:flex;gap:6px;align-items:center;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:3px 3px 3px 8px}
 .q code{font:11.5px var(--mono);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;user-select:all}
 .q button{padding:3px 8px;flex:none}
@@ -100,6 +127,10 @@ h1{font:700 20px/1 var(--cond);letter-spacing:.01em;margin:0 6px 4px 0;white-spa
       <input type="number" id="n"><button type="button" data-step="1" aria-label="Більше пінів">+</button></div></div>
     <div class="field f-sig"><label class="lbl" for="sig">Сигнали по порядку, через кому (однакові на обох кінцях)</label>
       <input type="text" id="sig" spellcheck="false" autocomplete="off"></div>
+    <div class="field"><span class="lbl">Скручені</span>
+      <div class="seg" role="radiogroup" style="width:110px">
+        <label><input type="radio" name="twist" value="1">Так</label>
+        <label><input type="radio" name="twist" value="0">Ні</label></div></div>
   </section>
 
   <div class="pair">
@@ -112,9 +143,16 @@ h1{font:700 20px/1 var(--cond);letter-spacing:.01em;margin:0 6px 4px 0;white-spa
       <span class="pill" id="pill"></span>
       <p class="hint" id="pillNote" style="font-size:12px"></p>
       <div class="search"><span class="lbl">Шукати на AliExpress</span><div id="queries" class="search"></div></div>
+      <div class="view-sum" id="viewSum"></div>
+      <div class="pinmap">
+        <div class="pinmap-h"><span class="lbl">Pinout for order</span><label class="awg"><select id="awg" aria-label="Переріз проводу для всіх проводів"></select></label><button type="button" id="autoCol" title="Повернути автоматичні кольори за назвами сигналів">↺</button><button type="button" id="copyMap" title="Копіювати таблицю текстом">Копіювати</button></div>
+        <div class="tbl" id="pinmap"></div>
+        <p class="hint" id="pinHint">Side A pins follow the signal list order (first signal = pin 1).</p>
+      </div>
     </div>
     <div class="photo"><div id="photo"></div><button type="button" class="copy-img" id="copyImg">Копіювати зображення</button></div>
   </section>
+  <div class="viewbar"><button type="button" id="editBtn">Показати налаштування</button></div>
 </div>
 
 <script>
@@ -141,6 +179,59 @@ let state;
 try{ state = JSON.parse(localStorage.getItem(KEY)) }catch(e){}
 if(!state || !state.A || !TYPES[state.type]) state = structuredClone(DEFAULT);
 // the mounting variant must exist for the selected series
+/* ---------- the whole cable in one URL token (for BOM links) ----------
+   The published page only receives a bare #anchor (letters, digits, - _ . ~), so the configuration is
+   JSON -> UTF-8 -> base64url with a version prefix: #c1.<token> */
+const ARTIFACT_URL = 'https://claude.ai/artifact/6VgHgJP9uww4VWeSAHMVD8';
+// Where the page is self-hosted (GitHub Pages, company server…), links use ?cable=…; set this to that address,
+// e.g. 'https://example.github.io/jst-cable/'. On claude.ai only a bare #anchor reaches the page.
+const PUBLIC_URL = 'https://avtehnik.github.io/JST-Cable-Mapper/';
+const onArtifact = () => !(PUBLIC_URL || location.protocol === 'file:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname));
+// token from ?cable=… / #… (older links)
+const linkToken = () => new URLSearchParams(location.search).get('cable') || decodeURIComponent(location.hash.slice(1));
+/* readable query: ?t=GH&p=5V,TX,RX,GND&c=red,blue,yellow,black&w=28&a=H-L-SMD&b=V-R-SMD
+   t type · p signals (pin count = number of signals) · c colours · w AWG · a/b mount-direction-variant */
+const COLOR_BY_EN = () => Object.fromEntries(Object.entries(COLOR_EN).map(([hex, en]) => [en, hex]));
+function queryString(){
+  const q = (k, v) => `${k}=${encodeURIComponent(v).replace(/%2C/g, ',')}`;
+  const side = (x, k) => x.none ? `none-${stripLen(k)}-${tinned(k) ? 't' : 'n'}` : [x.mount, x.dir, x.variant].join('-');
+  return [q('t', state.type), q('p', Array.from({length:state.n}, (_,i) => state.names[i]||'').join(',')),
+          q('c', Array.from({length:state.n}, (_,i) => COLOR_EN[pinColor(i)]).join(',')),
+          q('w', awgOf()), q('a', side(state.A, 'A')), q('b', side(state.B, 'B')), ...(state.twist ? ['tw=1'] : [])].join('&');
+}
+function decodeQuery(search){
+  const u = new URLSearchParams(search), t = (u.get('t')||'').toUpperCase();
+  if(!TYPES[t] || !u.has('p')) return null;
+  const names = u.get('p').split(',').map(x => x.trim());
+  if(names.length < 2) return null;
+  const byEn = COLOR_BY_EN();
+  const side = (v, d) => { if(!v) return d; if(/^none/i.test(v)){ const [, mm, tn] = v.split('-'); return { ...d, none: true, strip: parseFloat(mm) > 0 ? Math.min(20, parseFloat(mm)) : 2, tin: (tn||'t').toLowerCase() !== 'n' }; } const [m, dir, vr] = v.split('-');
+    return { mount: (m||'').toUpperCase()==='V'?'V':'H', dir: (dir||'').toUpperCase()==='R'?'R':'L', variant: (vr||'').toUpperCase(), part:'' }; };
+  return { type:t, n:names.length, names, wires:'color', awg:+u.get('w')||undefined, twist: u.get('tw') === '1',
+           colors:(u.get('c')||'').split(',').map(x => byEn[x.trim().toLowerCase()]),
+           A: side(u.get('a'), DEFAULT.A), B: side(u.get('b'), DEFAULT.B) };
+}
+const fromUrl = () => decodeQuery(location.search) || decodeCable(linkToken());
+const b64u = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const unb64u = str => Uint8Array.from(atob(str.replace(/-/g,'+').replace(/_/g,'/')), ch => ch.charCodeAt(0));
+function encodeCable(){
+  const side = x => [x.mount, x.dir, x.variant];
+  const o = { t: state.type, n: state.n, s: Array.from({length:state.n}, (_,i) => state.names[i]||''),
+              c: Array.from({length:state.n}, (_,i) => COLORS.indexOf(pinColor(i))), w: awgOf(), a: side(state.A), b: side(state.B) };
+  return 'c1.' + b64u(new TextEncoder().encode(JSON.stringify(o)));
+}
+function decodeCable(token){
+  try{
+    if(!/^c1\.[A-Za-z0-9_-]+$/.test(token)) return null;
+    const o = JSON.parse(new TextDecoder().decode(unb64u(token.slice(3))));
+    if(!TYPES[o.t] || !(o.n >= 2) || !Array.isArray(o.s)) return null;
+    const side = (x, d) => Array.isArray(x) ? { mount: x[0]==='V'?'V':'H', dir: x[1]==='R'?'R':'L', variant: String(x[2]||''), part:'' } : d;
+    return { type:o.t, n:o.n|0, names:o.s.map(String), wires:'color', awg:+o.w||undefined,
+             colors:(o.c||[]).map(k => COLORS[k] || undefined),
+             A: side(o.a, DEFAULT.A), B: side(o.b, DEFAULT.B) };
+  }catch(e){ return null; }
+}
+
 const fixVariant = s => { const v = TYPES[state.type].variants; if(!v.includes(state[s].variant)) state[s].variant = v[0]; };
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)) }catch(e){} }
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -219,7 +310,19 @@ function buildSide(s){
   root.innerHTML = `
     <div class="side-h"><div class="tag">${s}</div><h2>${s==='A'?"Плата A":"Плата B"}</h2><span id="part${s}" class="part"></span></div>
     <div class="col">
-      <div class="col" style="gap:8px">
+      <div class="field"><span class="lbl">Кінець ${s}</span>
+        <div class="seg" role="radiogroup">
+          <label><input type="radio" name="none${s}" value="0">Роз'єм</label>
+          <label><input type="radio" name="none${s}" value="1">Без роз'єму (дроти)</label></div></div>
+      <div class="row2 noneopt">
+        <div class="field"><label class="lbl" for="strip${s}">Зачистка, мм</label>
+          <input type="number" id="strip${s}" min="0.5" max="20" step="0.5"></div>
+        <div class="field"><span class="lbl">Лудіння</span>
+          <div class="seg" role="radiogroup">
+            <label><input type="radio" name="tin${s}" value="1">Так</label>
+            <label><input type="radio" name="tin${s}" value="0">Ні</label></div></div>
+      </div>
+      <div class="col opt" style="gap:8px">
         <div class="field"><span class="lbl">Монтаж</span>
           <div class="seg" role="radiogroup">
             <label title="Вертикальний"><input type="radio" name="mount${s}" value="V">Верт.</label>
@@ -227,19 +330,28 @@ function buildSide(s){
         <div class="field" id="varF${s}"><span class="lbl">Виконання</span>
           <div class="seg" role="radiogroup" id="var${s}"></div></div>
       </div>
-      <div class="field"><span class="lbl">Напрямок розпіновки</span>
+      <div class="field opt"><span class="lbl">Напрямок розпіновки</span>
         <div class="seg" role="radiogroup">
           <label><input type="radio" name="dir${s}" value="L"><span id="dirL${s}"></span></label>
           <label><input type="radio" name="dir${s}" value="R"><span id="dirR${s}"></span></label></div>
         <p class="hint" id="how${s}"></p></div>
     </div>
-    <div class="preview" id="prev${s}"></div>`;
+    <div class="preview opt" id="prev${s}"></div>`;
+  root.querySelectorAll(`input[name=none${s}]`).forEach(r => r.addEventListener('change', () => { state[s].none = r.value==='1'; update(); }));
+  const stIn = root.querySelector('#strip'+s);
+  stIn.addEventListener('change', () => { const v = parseFloat(stIn.value); state[s].strip = v > 0 ? Math.min(20, v) : 2; update(); });
+  root.querySelectorAll(`input[name=tin${s}]`).forEach(r => r.addEventListener('change', () => { state[s].tin = r.value==='1'; update(); }));
   root.querySelector('#var'+s).addEventListener('change', e => { if(e.target.name==='var'+s){ state[s].variant = e.target.value; update(); } });
   root.querySelectorAll(`input[name=mount${s}]`).forEach(r => r.addEventListener('change', () => { state[s].mount = r.value; update(); }));
   root.querySelectorAll(`input[name=dir${s}]`).forEach(r => r.addEventListener('change', () => { state[s].dir = r.value; update(); }));
 }
 function syncSide(s){
   const st = state[s], t = TYPES[state.type], first = esc(sig(0));
+  document.querySelectorAll(`input[name=none${s}]`).forEach(r => r.checked = (r.value==='1') === !!st.none);
+  document.getElementById('side'+s).classList.toggle('none', !!st.none);
+  document.getElementById('strip'+s).value = stripLen(s);
+  document.querySelectorAll(`input[name=tin${s}]`).forEach(r => r.checked = (r.value==='1') === tinned(s));
+  if(st.none){ document.getElementById('part'+s).innerHTML = `без роз'єму, ${endUa(s)}`; return; }
   document.querySelectorAll(`input[name=mount${s}]`).forEach(r => r.checked = r.value===st.mount);
   document.querySelectorAll(`input[name=dir${s}]`).forEach(r => r.checked = r.value===st.dir);
   document.getElementById('dirL'+s).innerHTML = `${first} зліва`;
@@ -254,6 +366,12 @@ function syncSide(s){
   document.getElementById('part'+s).innerHTML = `гніздо <b>${t.parts[st.variant][st.mount](state.n)}</b>`;
   document.getElementById('prev'+s).innerHTML = drawHeader(s);
 }
+
+// a side without a connector: strip length (mm) and tinning
+const stripLen = s => (state[s].strip > 0 ? state[s].strip : 2);
+const tinned = s => state[s].tin !== false;
+const endText = s => `stripped ${stripLen(s)} mm${tinned(s) ? ', tinned' : ', not tinned'}`;
+const endUa = s => `зачистка ${stripLen(s)} мм${tinned(s) ? ', луджені' : ', без лудіння'}`;
 
 /* ---------- the physics ----------
    plugSide: where signal #1 is when you look straight at the plug's mating face with its latch up.
@@ -271,7 +389,8 @@ function analyse(){
   const pA = plugSide('A'), pB = plugSide('B');
   const same = pA !== pB;          // both latches on the same face when laid flat
   const topFirst = pA === 'L';     // left plug latch-up: signal #1 is on the top row when pA = L
-  return {same, topFirst};
+  // B alone (A has no connector): right plug latch-up has signal #1 on the top row when pB = R
+  return {same, topFirst, topFirstB: pB === 'R', noneA: !!state.A.none, noneB: !!state.B.none};
 }
 
 /* ---------- rendered 3D sprites (tools/render.mjs) ---------- */
@@ -312,29 +431,69 @@ function drawHeader(s){
 }
 
 /* ---------- the cable "photo" ---------- */
-const COLORS = ['#D12B2B','#1C1C1C','#E8C21A','#2E9E44','#2F6FD6','#EDEDED','#EF7D17','#7E47B5','#8C8C8C','#7A4B24'];
-const OD = {SH:0.85, GH:1.0, PB:0.9, XH:1.4};
-function wireColor(k){ return COLORS[k % COLORS.length]; }   // always coloured, like most seller photos
+const COLORS = ['#E2413A','#1B1B1B','#F1F1F1','#F2C31B','#4D6BE6','#1E9F78','#A5A5A5','#8C2D2D','#E8673C','#7A3FB0'];   // standard hook-up wire colours
+// wire gauge: one for all wires; outer diameter of common PVC hook-up wire (UL1571 / UL1007) in mm
+const AWG_OD = {32:0.55, 30:0.65, 28:0.8, 26:1.0, 24:1.25, 22:1.5};
+const AWG_RANGE = {SH:[32,30,28], GH:[30,28,26], PB:[32,30,28,26], XH:[30,28,26,24,22]};
+const AWG_DEFAULT = {SH:28, GH:28, PB:28, XH:26};
+const awgOf = () => AWG_RANGE[state.type].includes(state.awg) ? state.awg : AWG_DEFAULT[state.type];
+// colour per pin (signal index): user's choice, otherwise the palette by pin number
+const C = {red:'#E2413A', black:'#1B1B1B', white:'#F1F1F1', yellow:'#F2C31B', blue:'#4D6BE6', green:'#1E9F78'};
+// colour suggested by the signal name, or null
+function ruleColor(name){
+  const n = String(name||'').toUpperCase().replace(/\s+/g,'');
+  const t = n.replace(/^(UART|USART|SERIAL|USB|I2C|IIC|TWI)\d*[_\-.]?/, '').replace(/\d+$/, '');   // UART1_TX -> TX, TX2 -> TX
+  if(/^(GND|G|GROUND|VSS|0V|AGND|DGND|PGND|-|MINUS|BAT-|V-)$/.test(n)) return C.black;
+  if(/^\+?\d+(\.\d+)?V\d*$/.test(n) || /^\d+V\d+$/.test(n) || /^\d+S$/.test(n) ||
+     /^(VCC|VDD|VIN|VBAT|VBA|VBUS|VSYS|V\+|BAT\+|PWR|\+)$/.test(n)) return C.red;
+  if(/^(D\+|DP|DATA\+|USB\+|USB_?DP|USB_?D\+)$/.test(n)) return C.white;
+  if(/^(D-|DM|DN|DATA-|USB-|USB_?DM|USB_?D-)$/.test(n)) return C.green;
+  if(/^(SCL|SCK|I2C_?SCL)$/.test(n) || t === 'SCL') return C.green;
+  if(/^(SDA|I2C_?SDA)$/.test(n) || t === 'SDA') return C.white;
+  if(t === 'TX' || t === 'TXD') return C.blue;
+  if(t === 'RX' || t === 'RXD') return C.yellow;
+  return null;
+}
+// automatic colours for all pins: rules first, then unused palette colours for the rest
+function autoColors(){
+  const n = state.n, out = Array.from({length:n}, (_,i) => ruleColor(state.names[i]));
+  const used = new Set(out.filter(Boolean));
+  const pool = ['#F2C31B','#1E9F78','#4D6BE6','#F1F1F1','#E8673C','#7A3FB0','#A5A5A5','#8C2D2D','#E2413A','#1B1B1B'];
+  let k = 0;
+  for(let i=0;i<n;i++){
+    if(out[i]) continue;
+    const free = pool.filter(c => !used.has(c));
+    out[i] = free.length ? free[0] : pool[k++ % pool.length];
+    used.add(out[i]);
+  }
+  return out;
+}
+const pinColor = i => (state.colors && COLORS.includes(state.colors[i]) && state.colors[i]) || autoColors()[i];   // ignores colours from an older palette
 function drawCable(r){
-  const n = state.n, type = state.type;
+  const n = state.n, type = state.type, hasA = !r.noneA, hasB = !r.noneB;
   // which rendered face of the housing points 'up' (away from the board / toward the latch wall) when mated.
   // SH and PicoBlade: the smooth face, not the one with open contacts.
   const flip = type === 'SH' || type === 'PB';
   // PicoBlade is drawn turned over along the cable axis: side A shows its contact face by default.
   // Turning the whole cable over swaps both visible faces and reverses the row order, the wiring stays the same.
   const turnOver = type === 'PB';
-  const faceFlip = flip !== turnOver, topFirst = r.topFirst !== turnOver;
-  const faceA = faceFlip ? 'down' : 'up', faceB = (r.same ? faceA : (faceA === 'up' ? 'down' : 'up'));
+  const faceFlip = flip !== turnOver, up0 = faceFlip ? 'down' : 'up', other = x => x === 'up' ? 'down' : 'up';
+  let faceA = up0, faceB = up0, topFirst = true;
+  if(hasA){ faceB = r.same ? faceA : other(faceA); topFirst = r.topFirst !== turnOver; }
+  else if(hasB){ topFirst = r.topFirstB !== turnOver; }
   const nA = `plug-${type}-${faceA}`, nB = `plug-${type}-${faceB}`;
-  const cA = cellOf(nA, n), cB = cellOf(nB, n), ppm = SPR[nA].ppm;
-  const f = Math.min(0.85, 330 / Math.max(cA.h, cB.h));
-  const W = 1000, H = Math.max(cA.h, cB.h)*f + 120, cy = 50 + Math.max(cA.h, cB.h)*f/2;
+  const cA = hasA ? cellOf(nA, n) : null, cB = hasB ? cellOf(nB, n) : null, ref = cA || cB || cellOf(`plug-${type}-up`, n);
+  const ppm = SPR[`plug-${type}-up`].ppm, hMax = Math.max(ref.h, cA ? cA.h : 0, cB ? cB.h : 0);
+  const f = Math.min(0.85, 330 / hMax);
+  const W = 1000, H = hMax*f + 120, cy = 50 + hMax*f/2;
   const xA = 120, xB = W - 120;
   const mid = c => c.rear.reduce((a,p)=>a+p[1],0)/c.rear.length;
-  const yA0 = cy - mid(cA)*f, yB0 = cy - mid(cB)*f;
-  const rearA = cA.rear.map(p => [xA + (p[0]-cA.mate[0])*f, yA0 + p[1]*f]);
-  const rearB = cB.rear.map(p => [xB - (p[0]-cB.mate[0])*f, yB0 + p[1]*f]);
-  const mm = ppm*f, ww = OD[type]*mm*0.6, tuck = 1.2*mm;   // wires drawn thinner than true OD so the housings read better
+  const mm = ppm*f, ww = AWG_OD[awgOf()]*mm*0.75, tuck = 1.2*mm;   // wires drawn thinner than true OD so the housings read better
+  const stripPx = side => Math.max(6, Math.min(80, stripLen(side) * mm));            // stripped ends, to scale
+  const rowsOf = c => c.rear.map(p => cy - mid(c)*f + p[1]*f);
+  const ys = rowsOf(cA || cB || ref);
+  const rearA = cA ? cA.rear.map(p => [xA + (p[0]-cA.mate[0])*f, cy - mid(cA)*f + p[1]*f]) : ys.map(y => [xA + stripPx('A'), y]);
+  const rearB = cB ? cB.rear.map(p => [xB - (p[0]-cB.mate[0])*f, cy - mid(cB)*f + p[1]*f]) : ys.map(y => [xB - stripPx('B'), y]);
   const rowSig = k => topFirst ? k : n-1-k;
 
   let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Кабель, покладений пласко" style="font-family:'IBM Plex Mono',monospace">
@@ -344,38 +503,71 @@ function drawCable(r){
   </defs>
   <rect width="${W}" height="${H}" fill="url(#mat)"/>`;
 
-  // wires under the housings, with a gentle common wave like a real loose cable
-  const x1 = rearA[0][0] - tuck, x2 = rearB[0][0] + tuck, steps = 60;
+  const x1 = rearA[0][0] - (cA ? tuck : 0), x2 = rearB[0][0] + (cB ? tuck : 0);
   const spacing = n>1 ? Math.abs(rearA[1][1]-rearA[0][1]) : 10, amp = Math.min(10, spacing*0.3);
+  const wirePaths = (d, c, w) =>
+    `<path d="${d}" fill="none" stroke="#0A0F14" stroke-opacity=".55" stroke-width="${w+1.2}" stroke-linejoin="round" stroke-linecap="round"/>` +
+    `<path d="${d}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"/>` +
+    `<path d="${d}" fill="none" stroke="#FFFFFF" stroke-opacity="${c==='#F1F1F1'?.9:.25}" stroke-width="${Math.max(.8,w*.26)}" transform="translate(0 ${-w*.2})" stroke-linejoin="round" stroke-linecap="round"/>`;
   let wires = '';
-  for(let k=0;k<n;k++){
-    const ya = rearA[k][1], yb = rearB[k][1], c = wireColor(k);
-    let d = '';
-    for(let j=0;j<=steps;j++){
-      const u = j/steps, x = x1 + (x2-x1)*u, env = Math.sin(Math.PI*u);
-      const y = ya + (yb-ya)*u + amp*env*Math.sin(2*Math.PI*u*1.15 + .6) + env*env*amp*0.6;
-      d += (j?'L':'M') + x.toFixed(1) + ' ' + y.toFixed(1);
+  if(!state.twist){
+    // a gentle common wave, like a real loose cable
+    for(let k=0;k<n;k++){
+      const ya = rearA[k][1], yb = rearB[k][1];
+      let d = '';
+      for(let j=0;j<=60;j++){
+        const u = j/60, x = x1 + (x2-x1)*u, env = Math.sin(Math.PI*u);
+        const y = ya + (yb-ya)*u + amp*env*Math.sin(2*Math.PI*u*1.15 + .6) + env*env*amp*0.6;
+        d += (j?'L':'M') + x.toFixed(1) + ' ' + y.toFixed(1);
+      }
+      wires += wirePaths(d, pinColor(rowSig(k)), ww);
     }
-    wires += `<path d="${d}" fill="none" stroke="#0A0F14" stroke-opacity=".55" stroke-width="${ww+1.2}" stroke-linejoin="round"/>`;
-    wires += `<path d="${d}" fill="none" stroke="${c}" stroke-width="${ww}" stroke-linejoin="round"/>`;
-    wires += `<path d="${d}" fill="none" stroke="#FFFFFF" stroke-opacity="${c==='#EDEDED'?.9:.25}" stroke-width="${Math.max(.8,ww*.26)}" transform="translate(0 ${-ww*.2})" stroke-linejoin="round"/>`;
+  } else {
+    // twisted: the wires gather into a bundle and wind around its axis; segments are painted back to front
+    const R = ww * 0.55 * Math.sqrt(n), turns = Math.max(3, (x2 - x1) / (ww * 7 + 26)), steps = 220, segs = [];
+    const ease = t => t <= 0 ? 0 : t >= 1 ? 1 : t*t*(3-2*t);
+    for(let k=0;k<n;k++){
+      const ya = rearA[k][1], yb = rearB[k][1], ph = 2*Math.PI*k/n, pts = [];
+      for(let j=0;j<=steps;j++){
+        const u = j/steps, b = ease(u/0.16) * ease((1-u)/0.16), th = 2*Math.PI*turns*u + ph;
+        pts.push([x1 + (x2-x1)*u, (1-b)*(ya + (yb-ya)*u) + b*(cy + R*Math.cos(th)), b*Math.sin(th)]);
+      }
+      for(let j=0;j<steps;j++) segs.push({ d:`M${pts[j][0].toFixed(1)} ${pts[j][1].toFixed(1)}L${pts[j+1][0].toFixed(1)} ${pts[j+1][1].toFixed(1)}`, z:(pts[j][2]+pts[j+1][2])/2, c:pinColor(rowSig(k)) });
+    }
+    segs.sort((p, q) => p.z - q.z);
+    for(const g of segs) wires += wirePaths(g.d, g.c, ww * (1 + g.z * 0.08));
+  }
+  // stripped ends where a side has no connector
+  const bare = (xa, xb, y, side) => {
+    const cw = ww*0.55, seg = `M${xa} ${y}L${xb} ${y}`;
+    return tinned(side)
+      ? `<path d="${seg}" stroke="#7F868D" stroke-width="${cw+1}" stroke-linecap="round"/><path d="${seg}" stroke="#D9DDE1" stroke-width="${cw}" stroke-linecap="round"/><path d="${seg}" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="${Math.max(.6,cw*.25)}" transform="translate(0 ${-cw*.2})"/>`
+      : `<path d="${seg}" stroke="#7A4A22" stroke-width="${cw+1}"/><path d="${seg}" stroke="#C98A4B" stroke-width="${cw}"/><path d="${seg}" stroke="#8A5427" stroke-width="${Math.max(.5,cw*.12)}" transform="translate(0 ${-cw*.22})"/><path d="${seg}" stroke="#8A5427" stroke-width="${Math.max(.5,cw*.12)}" transform="translate(0 ${cw*.22})"/>`;
+  };
+  for(let k=0;k<n;k++){
+    if(!cA) wires += bare(xA, rearA[k][0], rearA[k][1], 'A');
+    if(!cB) wires += bare(rearB[k][0], xB, rearB[k][1], 'B');
   }
   s += `<g filter="url(#wsh)">${wires}</g>`;
-  s += `<g transform="translate(${xA - cA.mate[0]*f} ${yA0}) scale(${f})">${spriteSvg(nA, cA)}</g>`;
-  s += `<g transform="translate(${xB + cB.mate[0]*f} ${yB0}) scale(${-f} ${f})">${spriteSvg(nB, cB)}</g>`;
+  if(cA) s += `<g transform="translate(${xA - cA.mate[0]*f} ${cy - mid(cA)*f}) scale(${f})">${spriteSvg(nA, cA)}</g>`;
+  if(cB) s += `<g transform="translate(${xB + cB.mate[0]*f} ${cy - mid(cB)*f}) scale(${-f} ${f})">${spriteSvg(nB, cB)}</g>`;
 
   const fs = Math.max(9, Math.min(13, spacing*0.8));
-  for(let k=0;k<n;k++){
+  for(let k=0;k<n && !viewMode;k++){   // signal names beside the wires; hidden in view mode
     const i = rowSig(k), bold = i===0 ? ' font-weight="700" fill="#FFFFFF"' : ' fill="#D5E1EA"';
     s += `<text x="${xA-12}" y="${rearA[k][1] + fs*0.35}" font-size="${fs}" text-anchor="end"${bold}>${esc(sig(i))}</text>`;
     s += `<text x="${xB+12}" y="${rearB[k][1] + fs*0.35}" font-size="${fs}"${bold}>${esc(sig(i))}</text>`;
   }
-  const cxA = xA + (cA.w/2 - cA.mate[0])*f*0.6, cxB = xB - (cB.w/2 - cB.mate[0])*f*0.6;
+  const cxA = cA ? xA + (cA.w/2 - cA.mate[0])*f*0.6 : xA, cxB = cB ? xB - (cB.w/2 - cB.mate[0])*f*0.6 : xB;
   const cap = (x, up, name) =>
     `<text x="${x}" y="28" font-size="14" font-weight="600" fill="#FFFFFF" text-anchor="middle">${name}</text>
      <text x="${x}" y="${H-20}" font-size="13" fill="${up?'#FFE08A':'#9FD3FF'}" text-anchor="middle">${up?FACE(type).up:FACE(type).down}</text>`;
-  s += cap(cxA, faceA === 'up', 'до плати A') + cap(cxB, faceB === 'up', 'до плати B');
-  s += `<text x="${W/2}" y="${H-20}" font-size="12" fill="#C3D2DD" text-anchor="middle">вид згори · кабель лежить пласко</text>`;
+  const endCap = (x, side) =>
+    `<text x="${x}" y="28" font-size="14" font-weight="600" fill="#FFFFFF" text-anchor="middle">кінець ${side}</text>
+     <text x="${x}" y="${H-20}" font-size="13" fill="#C3D2DD" text-anchor="middle">${endUa(side)}</text>`;
+  s += cA ? cap(cxA, faceA === 'up', 'до плати A') : endCap(cxA, 'A');
+  s += cB ? cap(cxB, faceB === 'up', 'до плати B') : endCap(cxB, 'B');
+  s += `<text x="${W/2}" y="${H-20}" font-size="12" fill="#C3D2DD" text-anchor="middle">вид згори · ${state.twist ? 'скручені дроти' : 'кабель лежить пласко'}</text>`;
   return s + '</svg>';
 }
 
@@ -388,14 +580,22 @@ const FACE = t => (t==='SH' || t==='PB')
 function verdict(r){
   const t = TYPES[state.type], n = state.n;
   const n0 = state.n;
-  document.getElementById('pill').textContent = r.same ? `Дзеркальний · 1 → ${n0}` : 'Прямий · 1 → 1';
-  document.getElementById('pillNote').textContent = r.same
+  const only = r.noneA && r.noneB ? 'none' : r.noneB ? 'A' : r.noneA ? 'B' : '';
+  document.getElementById('pill').textContent = only === 'none' ? "Без роз'ємів · дроти" : only === 'A' ? 'Односторонній · A → дроти' : only === 'B' ? 'Односторонній · дроти → B' : r.same ? `Дзеркальний · 1 → ${n0}` : 'Прямий · 1 → 1';
+  document.getElementById('pillNote').textContent =
+      only === 'none' ? `Обидва кінці — зачищені проводи. A: ${endUa('A')}; B: ${endUa('B')}.`
+    : only === 'A' ? `Роз'єм тільки з боку A, з іншого боку — зачищені кінці проводів (${endUa('B')}).`
+    : only === 'B' ? `Роз'єм тільки з боку B, з іншого боку — зачищені кінці проводів (${endUa('A')}).`
+    : r.same
     ? `Контакт 1 одного роз'єму йде на контакт ${n0} іншого. На фото продавця обидва роз'єми лежать однаковим боком («same direction», 同向).`
     : `Контакт 1 йде на контакт 1, сигнали без перехрещень. На фото продавця роз'єми лежать різними боками («reverse direction», 反向).`;
   document.getElementById('photo').innerHTML = drawCable(r);
   const a = state.A, b = state.B;
   const en = r.same ? 'same direction' : 'reverse direction';
-  const qs = [`JST ${t.q} ${n}P double head cable ${en}`, `${t.q} ${n}P 双头 ${r.same?'同向':'反向'}`];
+  const tw = state.twist ? ' twisted' : '';
+  const qs = only === 'none' ? [`${awgOf()}AWG ${n} core${tw} wire`, `${awgOf()}AWG ${n}芯${state.twist ? ' 双绞' : ''} 电子线`]
+           : only ? [`JST ${t.q} ${n}P single head cable${tw}`, `${t.q} ${n}P 单头${state.twist ? ' 双绞' : ''}`]
+                     : [`JST ${t.q} ${n}P double head cable ${en}${tw}`, `${t.q} ${n}P 双头 ${r.same?'同向':'反向'}${state.twist ? ' 双绞' : ''}`];
   document.getElementById('queries').innerHTML = qs.map((q,i)=>
     `<div class="q"><code>${esc(q)}</code><button type="button" data-q="${i}">Копіювати</button></div>`).join('');
   document.querySelectorAll('[data-q]').forEach(btn => btn.addEventListener('click', async () => {
@@ -404,6 +604,52 @@ function verdict(r){
     setTimeout(() => btn.textContent = 'Копіювати', 1500);
   }));
 }
+
+/* ---------- order table: housing A pin -> housing B pin ---------- */
+document.getElementById('pinmap').addEventListener('change', e => {
+  if(!e.target.classList.contains('csel')) return;
+  state.colors = state.colors || [];
+  state.colors[+e.target.dataset.i] = e.target.value;
+  update();
+});
+document.getElementById('autoCol').addEventListener('click', () => { state.colors = []; update(); });
+const awgSel = document.getElementById('awg');
+awgSel.addEventListener('change', () => { state.awg = +awgSel.value; update(); });
+const COLOR_NAMES = {'#E2413A':'червоний','#1B1B1B':'чорний','#F1F1F1':'білий','#F2C31B':'жовтий','#4D6BE6':'синій','#1E9F78':'зелений','#A5A5A5':'сірий','#8C2D2D':'коричневий','#E8673C':'помаранчевий','#7A3FB0':'фіолетовий'};
+function pinRows(r){
+  const n = state.n;
+  return Array.from({length:n}, (_,i) => ({ a: i+1, b: r.same ? n - i : i + 1, sig: sig(i), color: pinColor(i) }));
+}
+const COLOR_EN = {'#E2413A':'red','#1B1B1B':'black','#F1F1F1':'white','#F2C31B':'yellow','#4D6BE6':'blue','#1E9F78':'green','#A5A5A5':'gray','#8C2D2D':'brown','#E8673C':'orange','#7A3FB0':'purple'};
+// connector type shown for each side, e.g. "JST GH 1.25"
+const sideType = () => TYPES[state.type].label;
+let viewMode = false;
+function drawPinmap(r){
+  document.getElementById('pinHint').textContent = r.noneA && r.noneB ? 'Wires follow the signal list order.' : `Side ${r.noneA ? 'B' : 'A'} pins follow the signal list order (first signal = pin 1).`;
+  const kindUa = r.noneA && r.noneB ? `Без роз'ємів: A — ${endUa('A')}, B — ${endUa('B')}`
+    : r.noneB ? `Односторонній кабель: роз'єм A, з іншого боку ${endUa('B')}`
+    : r.noneA ? `Односторонній кабель: роз'єм B, з іншого боку ${endUa('A')}`
+    : r.same ? `Дзеркальний кабель, контакт 1 → ${state.n}` : 'Прямий кабель, контакт 1 → 1';
+  document.getElementById('viewSum').innerHTML = `${esc(TYPES[state.type].label)} · ${state.n}P · ${awgOf()} AWG${state.twist ? ' · скручені' : ''}<small>${kindUa}</small>`;
+  const rows = pinRows(r), ty = esc(sideType());
+  awgSel.innerHTML = AWG_RANGE[state.type].map(a => `<option value="${a}"${a===awgOf()?' selected':''}>${a} AWG</option>`).join('');
+  document.getElementById('pinmap').innerHTML = `<table><thead><tr>${viewMode ? '' : '<th>Signal</th>'}<th>Color</th><th>Side A${r.noneA ? '<div class="ty">no connector</div>' : ` pin<div class="ty">${ty}</div>`}</th><th>Side B${r.noneB ? '<div class="ty">no connector</div>' : ` pin<div class="ty">${ty}</div>`}</th></tr></thead><tbody>${
+    rows.map(x => `<tr>${viewMode ? '' : `<td class="sig">${esc(x.sig)}</td>`}<td><span class="sw" style="background:${x.color}"></span> ${viewMode ? COLOR_EN[x.color] : `<select class="csel" data-i="${x.a-1}" aria-label="Wire color for pin ${x.a}">${COLORS.map(c => `<option value="${c}"${c===x.color?' selected':''}>${COLOR_EN[c]}</option>`).join('')}</select>`}</td><td class="n">${r.noneA ? endText('A') : x.a}</td><td class="n">${r.noneB ? endText('B') : r.noneA ? x.a : x.b}</td></tr>`).join('')
+  }</tbody></table>`;
+}
+document.getElementById('copyMap').addEventListener('click', async e => {
+  const btn = e.currentTarget, r = analyse(), t = TYPES[state.type];
+  const kind = r.noneA && r.noneB ? `wire set, no connectors (side A: ${endText('A')}; side B: ${endText('B')})`
+    : r.noneB ? `single-ended cable (side B: ${endText('B')})`
+    : r.noneA ? `single-ended cable (side A: ${endText('A')})`
+    : `double-ended cable, ${r.same ? `mirrored (pin 1 to pin ${state.n})` : 'straight (pin 1 to pin 1)'}`;
+  const txt = [`${t.label} ${state.n}P ${kind}, wire ${awgOf()} AWG${state.twist ? ', twisted' : ''}`,
+               [...(viewMode ? [] : ['Signal']),'Color', r.noneA ? 'Side A' : `Side A pin (${sideType()})`, r.noneB ? 'Side B' : `Side B pin (${sideType()})`].join('\t'),
+               ...pinRows(r).map(x => [...(viewMode ? [] : [x.sig]), COLOR_EN[x.color]||'', r.noneA ? endText('A') : x.a, r.noneB ? endText('B') : r.noneA ? x.a : x.b].join('\t'))].join('\n');
+  try{ await navigator.clipboard.writeText(txt); btn.textContent = 'Скопійовано'; }
+  catch(err){ btn.textContent = 'Не вдалося'; }
+  setTimeout(() => btn.textContent = 'Копіювати', 1500);
+});
 
 /* ---------- copy the cable picture as PNG ---------- */
 const dataUrlCache = new Map();
@@ -446,16 +692,39 @@ document.getElementById('copyImg').addEventListener('click', async e => {
   }
 });
 
+function cableLink(){
+  const t = encodeCable();
+  if(onArtifact()) return ARTIFACT_URL + '#' + t;
+  const base = PUBLIC_URL || location.origin + location.pathname;
+  return base + '?' + queryString();
+}
+window.addEventListener('hashchange', () => {
+  const o = fromUrl();
+  if(o){ state = o; clampN(); rebuildPins(); update(); }
+});
+
+document.querySelectorAll('input[name=twist]').forEach(r => r.addEventListener('change', () => { state.twist = r.value === '1'; update(); }));
 function update(){
+  document.querySelectorAll('input[name=twist]').forEach(r => r.checked = (r.value === '1') === !!state.twist);
   const t0 = TYPES[state.type], n0 = state.n;
   fixVariant('A'); fixVariant('B');
   typeSel.value = state.type;
   const t = TYPES[state.type]; nIn.value = state.n; nIn.min = t.min; nIn.max = t.max;
   syncSide('A'); syncSide('B');
-  verdict(analyse());
-  save();
+  const res = analyse(); verdict(res); drawPinmap(res);
+  if(!viewMode) save();
+  try{
+    if(onArtifact()) history.replaceState(null, '', '#' + encodeCable());
+    else history.replaceState(null, '', location.pathname + '?' + queryString());
+  }catch(e){}
 }
 
+// a BOM link (#c1.…) wins over what this browser remembered
+const fromLink = fromUrl();
+if(fromLink){ state = fromLink; viewMode = true; document.body.classList.add('view'); }
+document.getElementById('editBtn').addEventListener('click', () => {
+  viewMode = false; document.body.classList.remove('view'); update();
+});
 buildSide('A'); buildSide('B');
 clampN(); rebuildPins(); update();
 </script>
