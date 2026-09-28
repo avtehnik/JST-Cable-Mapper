@@ -90,6 +90,8 @@ h1{font:700 20px/1 var(--cond);letter-spacing:.01em;margin:0 6px 4px 0;white-spa
 .shot figcaption{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;color:var(--muted)}
 .photo svg{display:block;width:100%;height:auto;max-height:max(260px,calc(100vh - 430px))}
 .search{display:flex;flex-direction:column;gap:4px}
+.tamper{background:#C62828;color:#fff;border-radius:8px;padding:8px 12px;font:600 13px/1.4 var(--sans)}
+.tamper small{display:block;font-weight:400;opacity:.9}
 /* view mode: opened from a BOM link — only the finished cable and the table */
 .view-sum,.viewbar{display:none}
 body.view .top, body.view .pair, body.view .search, body.view #pill, body.view #pillNote, body.view #autoCol, body.view .pinmap .awg{display:none}
@@ -119,6 +121,7 @@ body.view .photo svg{max-height:calc(100vh - 110px)}
 </style>
 
 <div class="wrap">
+  <div class="tamper" id="tamper" hidden></div>
   <section class="card top">
     <h1>JST Cable Mapper</h1>
     <div class="field f-type"><label class="lbl" for="type">Тип</label><select id="type"></select></div>
@@ -192,7 +195,27 @@ const linkToken = () => new URLSearchParams(location.search).get('cable') || dec
 /* readable query: ?t=GH&p=5V,TX,RX,GND&c=red,blue,yellow,black&w=28&a=H-L-SMD&b=V-R-SMD
    t type · p signals (pin count = number of signals) · c colours · w AWG · a/b mount-direction-variant */
 const COLOR_BY_EN = () => Object.fromEntries(Object.entries(COLOR_EN).map(([hex, en]) => [en, hex]));
+/* integrity check: CRC-32 over the decoded cable parameters in a fixed order */
+const CRC_TABLE = Array.from({length:256}, (_, n) => { let c = n; for(let k=0;k<8;k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+function crc32(str){
+  let c = 0xFFFFFFFF;
+  for(const b of new TextEncoder().encode(str)) c = CRC_TABLE[(c ^ b) & 0xFF] ^ (c >>> 8);
+  return ((c ^ 0xFFFFFFFF) >>> 0).toString(16).padStart(8, '0');
+}
+const CRC_KEYS = ['t','p','c','w','a','b','tw'];
+const canonical = u => CRC_KEYS.filter(k => u.has(k)).map(k => `${k}=${u.get(k)}`).join('&');
+// 'ok' | 'bad' (parameters edited) | 'missing' (no crc in a link that has parameters) | '' (no link)
+function linkIntegrity(search){
+  const u = new URLSearchParams(search);
+  if(!u.has('t')) return '';
+  if(!u.has('crc')) return 'missing';
+  return u.get('crc').toLowerCase() === crc32(canonical(u)) ? 'ok' : 'bad';
+}
 function queryString(){
+  const body = queryBody();
+  return body + '&crc=' + crc32(canonical(new URLSearchParams(body)));
+}
+function queryBody(){
   const q = (k, v) => `${k}=${encodeURIComponent(v).replace(/%2C/g, ',')}`;
   const side = (x, k) => x.none ? `none-${stripLen(k)}-${tinned(k) ? 't' : 'n'}` : [x.mount, x.dir, x.variant].join('-');
   return [q('t', state.type), q('p', Array.from({length:state.n}, (_,i) => state.names[i]||'').join(',')),
@@ -713,15 +736,27 @@ function update(){
   syncSide('A'); syncSide('B');
   const res = analyse(); verdict(res); drawPinmap(res);
   if(!viewMode) save();
+  // the warning is about the link as it was opened; once the cable is changed here, a fresh valid link is written
+  const qs = queryString();
+  if(loadedQuery === null) loadedQuery = qs; else if(qs !== loadedQuery && linkCheck) linkCheck = '';
+  if(typeof showIntegrity === 'function') showIntegrity();
+  // keep a link with a wrong or missing crc exactly as opened, so the warning survives a page refresh
+  if(linkCheck === 'bad' || linkCheck === 'missing') return;
   try{
     if(onArtifact()) history.replaceState(null, '', '#' + encodeCable());
-    else history.replaceState(null, '', location.pathname + '?' + queryString());
+    else history.replaceState(null, '', location.pathname + '?' + qs);
   }catch(e){}
 }
 
 // a BOM link (#c1.…) wins over what this browser remembered
 const fromLink = fromUrl();
 if(fromLink){ state = fromLink; viewMode = true; document.body.classList.add('view'); }
+let linkCheck = linkIntegrity(location.search), loadedQuery = null;
+function showIntegrity(){
+  const el = document.getElementById('tamper');
+  el.hidden = !(linkCheck === 'bad' || linkCheck === 'missing');
+  el.textContent = 'Є помилки в конфігурації шлейфа.';
+}
 document.getElementById('editBtn').addEventListener('click', () => {
   viewMode = false; document.body.classList.remove('view'); update();
 });
