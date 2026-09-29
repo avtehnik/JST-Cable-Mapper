@@ -350,6 +350,12 @@ function buildSide(s){
           <div class="seg" role="radiogroup">
             <label title="Вертикальний"><input type="radio" name="mount${s}" value="V">Верт.</label>
             <label title="Горизонтальний"><input type="radio" name="mount${s}" value="H">Гориз.</label></div></div>
+        <div class="field" id="rotF${s}"><span class="lbl">Поворот</span>
+          <div class="seg" role="radiogroup">
+            <label><input type="radio" name="rot${s}" value="0">0°</label>
+            <label><input type="radio" name="rot${s}" value="90">90°</label>
+            <label><input type="radio" name="rot${s}" value="180">180°</label>
+            <label><input type="radio" name="rot${s}" value="270">270°</label></div></div>
         <div class="field" id="varF${s}"><span class="lbl">Виконання</span>
           <div class="seg" role="radiogroup" id="var${s}"></div></div>
       </div>
@@ -366,6 +372,7 @@ function buildSide(s){
   root.querySelectorAll(`input[name=tin${s}]`).forEach(r => r.addEventListener('change', () => { state[s].tin = r.value==='1'; update(); }));
   root.querySelector('#var'+s).addEventListener('change', e => { if(e.target.name==='var'+s){ state[s].variant = e.target.value; update(); } });
   root.querySelectorAll(`input[name=mount${s}]`).forEach(r => r.addEventListener('change', () => { state[s].mount = r.value; update(); }));
+  root.querySelectorAll(`input[name=rot${s}]`).forEach(r => r.addEventListener('change', () => { state[s].rot = +r.value; update(); }));
   root.querySelectorAll(`input[name=dir${s}]`).forEach(r => r.addEventListener('change', () => { state[s].dir = r.value; update(); }));
 }
 function syncSide(s){
@@ -376,6 +383,8 @@ function syncSide(s){
   document.querySelectorAll(`input[name=tin${s}]`).forEach(r => r.checked = (r.value==='1') === tinned(s));
   if(st.none){ document.getElementById('part'+s).innerHTML = `без роз'єму, ${endUa(s)}`; return; }
   document.querySelectorAll(`input[name=mount${s}]`).forEach(r => r.checked = r.value===st.mount);
+  document.getElementById('rotF'+s).style.display = st.mount === 'V' ? '' : 'none';   // preview-only, not part of the link
+  document.querySelectorAll(`input[name=rot${s}]`).forEach(r => r.checked = +r.value === (+st.rot || 0));
   document.querySelectorAll(`input[name=dir${s}]`).forEach(r => r.checked = r.value===st.dir);
   document.getElementById('dirL'+s).innerHTML = `${first} зліва`;
   document.getElementById('dirR'+s).innerHTML = `${first} справа`;
@@ -429,28 +438,42 @@ const hdrName = s => { const base = `hdr-${state.type}-${state[s].mount}`, v = s
   return v === TYPES[state.type].variants[0] ? base : `${base}-${v}`; };
 function drawHeader(s){
   const st = state[s], n = state.n, name = hdrName(s), c = cellOf(name, n);
+  const ang = st.mount === 'V' ? ((+st.rot || 0) % 360 + 360) % 360 : 0;   // preview rotation, for convenience only
+  const side = ang === 90 || ang === 270;
   const xs = c.pins.slice().sort((a,b)=>a-b);
   const sp = n > 1 ? xs[1]-xs[0] : c.w;
   const maxLen = Math.max(...Array.from({length:n},(_,i)=>sig(i).length));
-  const fs = c.w/22, rot = maxLen*0.62*fs > sp*0.95;
-  const band = rot ? fs*5.2 : fs*2.2, capH = fs*2;
-  const H = st.mount==='H' ? capH + c.h + band : band + c.h + capH;
-  const y0 = st.mount==='H' ? capH : band;               // image top
+  const fs = c.w/17, tilt = !side && maxLen*0.62*fs > sp*0.95;
+  const band = side ? fs*0.6 + maxLen*0.62*fs : tilt ? fs*5.2 : fs*2.2, capH = fs*2;
   const order = Array.from({length:n}, (_,k) => st.dir==='L' ? k : n-1-k);
+  const labelStyle = i => `font-size="${fs}" fill="${i===0?'#1D5BBF':'#2B3530'}"${i===0?' font-weight="700"':''}`;
+  if(st.mount === 'H'){
+    const H = capH + c.h + band, y0 = capH;
+    let t = '';
+    xs.forEach((x,k) => {
+      const i = order[k], y = y0 + c.h + (tilt ? fs*0.8 : fs*1.5);
+      t += tilt ? `<text x="${x}" y="${y}" ${labelStyle(i)} text-anchor="end" transform="rotate(-60 ${x} ${y})" dominant-baseline="middle">${esc(sig(i))}</text>`
+                : `<text x="${x}" y="${y}" ${labelStyle(i)} text-anchor="middle">${esc(sig(i))}</text>`;
+    });
+    return `<svg viewBox="0 0 ${c.w} ${H}" role="img" aria-label="Роз'єм ${s}" style="font-family:'IBM Plex Mono',monospace">
+      <g transform="translate(0 ${y0})">${spriteSvg(name, c)}</g>${t}
+      <text x="${c.w/2}" y="${fs*1.3}" font-size="${fs*0.85}" fill="#5A6962" text-anchor="middle">вид спереду · замок ${hLockTop(s) ? 'зверху' : 'знизу'}</text></svg>`;
+  }
+  // vertical: labels sit beyond the far wall; the whole thing turns, the text stays upright
+  const Hc = band + c.h, cx = c.w/2, cy = Hc/2;
+  const W2 = side ? Hc : c.w, H2 = side ? c.w : Hc;
+  const anchor = ang === 90 ? 'start' : ang === 270 ? 'end' : 'middle';
   let t = '';
   xs.forEach((x,k) => {
-    const i = order[k], first = i===0;
-    const y = st.mount==='H' ? y0 + c.h + (rot ? fs*0.8 : fs*1.5) : y0 - fs*0.7;
-    const style = `font-size="${fs}" fill="${first?'#1D5BBF':'#2B3530'}"${first?' font-weight="700"':''}`;
-    t += rot
-      ? `<text x="${x}" y="${y}" ${style} text-anchor="${st.mount==='H'?'end':'start'}" transform="rotate(-60 ${x} ${y})" dominant-baseline="middle">${esc(sig(i))}</text>`
-      : `<text x="${x}" y="${y}" ${style} text-anchor="middle">${esc(sig(i))}</text>`;
+    const i = order[k], y = band - fs*0.6;
+    const upright = `rotate(${-ang} ${x} ${y})` + (tilt ? ` rotate(-60 ${x} ${y})` : '');
+    t += `<text x="${x}" y="${y}" ${labelStyle(i)} text-anchor="${tilt ? 'start' : anchor}" dominant-baseline="middle" transform="${upright}">${esc(sig(i))}</text>`;
   });
-  const cap = st.mount==='H'
-    ? `<text x="${c.w/2}" y="${fs*1.3}" font-size="${fs*0.85}" fill="#5A6962" text-anchor="middle">вид спереду · замок ${hLockTop(s) ? 'зверху' : 'знизу'}</text>`
-    : `<text x="${c.w/2}" y="${y0 + c.h + fs*1.4}" font-size="${fs*0.85}" fill="#5A6962" text-anchor="middle">вид згори · ▼ замок з вашого боку</text>`;
-  return `<svg viewBox="0 0 ${c.w} ${H}" role="img" aria-label="Роз'єм ${s}" style="font-family:'IBM Plex Mono',monospace">
-    <g transform="translate(0 ${y0})">${spriteSvg(name, c)}</g>${t}${cap}</svg>`;
+  const lockAt = {0:'▼ замок з вашого боку', 90:'◀ замок зліва', 180:'▲ замок з протилежного боку', 270:'▶ замок справа'}[ang];
+  return `<svg viewBox="0 0 ${W2} ${H2 + capH}" role="img" aria-label="Роз'єм ${s}" style="font-family:'IBM Plex Mono',monospace">
+    <g transform="translate(${W2/2} ${H2/2}) rotate(${ang}) translate(${-cx} ${-cy})">
+      <g transform="translate(0 ${band})">${spriteSvg(name, c)}</g>${t}</g>
+    <text x="${W2/2}" y="${H2 + fs*1.4}" font-size="${fs*0.85}" fill="#5A6962" text-anchor="middle">вид згори · ${lockAt}</text></svg>`;
 }
 
 /* ---------- the cable "photo" ---------- */
@@ -575,7 +598,7 @@ function drawCable(r){
   if(cA) s += `<g transform="translate(${xA - cA.mate[0]*f} ${cy - mid(cA)*f}) scale(${f})">${spriteSvg(nA, cA)}</g>`;
   if(cB) s += `<g transform="translate(${xB + cB.mate[0]*f} ${cy - mid(cB)*f}) scale(${-f} ${f})">${spriteSvg(nB, cB)}</g>`;
 
-  const fs = Math.max(9, Math.min(13, spacing*0.8));
+  const fs = Math.max(11, Math.min(16, spacing*0.95));
   for(let k=0;k<n && !viewMode;k++){   // signal names beside the wires; hidden in view mode
     const i = rowSig(k), bold = i===0 ? ' font-weight="700" fill="#FFFFFF"' : ' fill="#D5E1EA"';
     s += `<text x="${xA-12}" y="${rearA[k][1] + fs*0.35}" font-size="${fs}" text-anchor="end"${bold}>${esc(sig(i))}</text>`;
